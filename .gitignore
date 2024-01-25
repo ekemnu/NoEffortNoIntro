@@ -1,0 +1,7 @@
+# Ignore everything
+*
+
+# White list files for git to track
+!*.sh
+!README.md
+!.gitignore
