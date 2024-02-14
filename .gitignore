@@ -2,6 +2,6 @@
 *
 
 # White list files for git to track
-!*.sh
+!*.py
 !README.md
 !.gitignore
