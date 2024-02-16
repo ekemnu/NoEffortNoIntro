@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2024
-#####	v0.2
+#####	v0.5
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -9,12 +9,12 @@
 #####		0.1  Basic bash script
 #####       0.2  Rewritten in Python
 #####       0.3  Improved Tag Scraping Logic
-#####       0.4  
+#####       0.4  Functionalized rom movement
+#####       0.5  Functionalized sort dir creation and create only as needed
+
 
 import re
 import os
-#import os.path
-#import shutil
 import subprocess
 import sys
 from itertools import chain 
@@ -81,20 +81,24 @@ def checkZip():
 def unzip():
         global extPath
         
-        # STILL NEED TO CHECK IF EXT PATH IS THERE
-        
         print("DEBUG: entered unzip")
         extPath = os.path.join(zipPath, zipFnRoot)
         bashCMD = flags.unzipCMD, '-d', '\'' + extPath + '\'', '\'' + zipFile + '\''
-        #bashCMD = 'echo -d', extPath, zipFile
         print("DEBUG: extPath is", extPath, type(extPath))
-        execBash(' '.join(bashCMD))
-        if bash.returncode == 0:
-            print(scriptFn, ": Sucessfully decompressed archive to", extPath)
+        if not os.path.isdir(extPath):
+            execBash(' '.join(bashCMD))
+            if bash.returncode == 0:
+                print(scriptFn, ": Sucessfully decompressed archive to", extPath)
+            else:
+                print("Error: Archive Decompression Failed\n", bash.stderr)
+                quit(1)
         else:
-            print("Error: Archive Decompression Failed\n", bash.stderr)
-            quit(1)
-            
+            if flags.unzipCMD.startswith('u'):
+                print("Error: Decompression Target Directory Already Exists\n")
+                quit(1)
+            else:
+                pass
+
 def processRom():
     global romRegion
     global romLang
@@ -108,67 +112,44 @@ def processRom():
     romRegion = {
             "USA": ( "USA", "Canada" ),
             "Japan": ( "Japan", "null" ),
-            "Europe": ( "Europe", "Australia", "PAL", "United Kingdom" ),
+            "Europe": ( "Europe", "Australia", "PAL", "United Kingdom", "New Zealand" ),
             "EurWor": ( "Germany", "France", "Spain", "Italy", "Netherlands", "Sweden", "Scandinavia", "Denmark" ),
             "World": ( "World", "Asia", "China", "Brazil", "Taiwan", "Korea", "Russia", "Hong Kong", "Argentina", "Latin America", "Mexico" )
     }
     romLang = ( "En", "Fr", "De", "Es", "It", "Nl", "Ja", "Sv", "Pt", "No","Da", "Zh", "Fi", "PT-BR", "Pl", "Ru", "Ko", "Ar", "Ca", "Zh-Hans", 
-                "Zh-Hant", "En-US", "Pt-PT", "En-GB", "Hu", "El", "Es-MX", "Es-XL", "Kw", "Ro", "Ro", "Yi", )
+                "Zh-Hant", "En-US", "Pt-PT", "En-GB", "Hu", "El", "Es-MX", "Es-XL", "Kw", "Ro", "Es-ES", "Yi", "Gd", "Cs", "Sl")
     regions = list(chain(*romRegion.values()))    
     
-    def makeDirs():
-        eurPath = extPath + "/Europe"
-        jpnPath = extPath + "/Japan"
-        worPath = extPath + "/World"
-        usaPath = extPath + "/USA"
-
-        if os.path.isdir(eurPath):
-            pass
+    def makeDir(srtFolder):
+        if os.path.isdir(extPath):
+            if not os.path.isdir(extPath + "/" + srtFolder):
+                print("DEBUG: mkdir", srtFolder)
+                os.mkdir(extPath + "/" + srtFolder)
+            else:
+                pass
         else:
-            print("DEBUG: entered mkdir eur", eurPath)
-            os.mkdir(eurPath)
-        if os.path.isdir(jpnPath):
-            pass
-        else: 
-            print("DEBUG: entered mkdir jpn", jpnPath)
-            os.mkdir(jpnPath)
-        if os.path.isdir(worPath):
-            pass
-        else: 
-            print("DEBUG: entered mkdir wor", worPath)
-            os.mkdir(worPath)
-            
-        if os.path.isdir(usaPath):
-            pass
-        else: 
-            print("DEBUG: entered mkdir usa", usaPath)
-            os.mkdir(usaPath)
-        
-        search string in reverse for ) to get index for each )
-        search string in reverse for ( to get index for each (
-        count indexes for ( and for ) and see if they are equal
-        if they are equal, move forward, if not they need more processing to figure out which close corresponds to which open
-        once we have matching set of ( ) we can split whats in between -- can python automatically split between chatacters?
-        if they are odd we need to compare the numbers for example: ( at 0,10,20,30  and ) at 15,25,35. looking for a ) in between each (
-                                                                            15,25,35 since there is no ) betwen 0 and 10, we can infer that
-                                                                                its not a tag; check from L>R more likely to find on L side
+            print("DEBUG: ENABLE TO CREATE SORT DIRECTORY EXITING")
+            exit(1)
+
     def gatherTags(rom):    # Scraps tags from Rom file name
         regionTags = []     # Create empty list for region tags
         languageTags = []   # Create empty list for language tags
         miscTags = []       # Create empty list for misc tags
-        print("DEBUG: regions is:", regions, type(regions)) 
-        tagsCollected = re.findall(r'\((.*?)\)', rom)   # Scrape file name for all occurrences of (***)
-        for tag in tagsCollected:                       # For each of the collected tags
-            tagSplit = tag.split(',')                   # Split the tags on commas
-            for splitTag in tagSplit:                   # For each of the individual tags
-                splitTag = splitTag.strip()             # Strip whitespace
+        #print("DEBUG: regions is:", regions, type(regions)) 
+        
+        tagsCollected = re.findall(r'\((?=[^(]*\))(.*?)\)', rom)    # Scrape file name in reverse for all occurrences of (***) matching only complete (***)
+        for tag in tagsCollected:                                   # For each of the collected tags
+            tagSplit = tag.split(',')                               # Split the tags on commas
+            for splitTag in tagSplit:                               # For each of the individual tags
+                splitTag = splitTag.strip()                         # Strip whitespace
+                #print("DEBUG: splittag is:", splitTag, type(splitTag))
                 if "+" in splitTag:
                     splitTag = splitTag.split('+')
-                    print("DEBUG: splittag after split:", splitTag, type(splitTag))             # Maybe try to read the file name in reverse to avoid unclosed errors
+                    #print("DEBUG: splittag after split:", splitTag, type(splitTag))             # Maybe try to read the file name in reverse to avoid unclosed errors
                     tagSplit.extend(splitTag)
                     continue
                 else:
-                    print("DEBUG: splitTag is:", splitTag, type(splitTag))
+                    #print("DEBUG: splitTag is:", splitTag, type(splitTag))
                     if splitTag in regions:                 # If the tag can be found in the regions list
                         regionTags.append(splitTag)         # Add it to the regionTags list
                         auditLogAddTags("regionTags", splitTag)
@@ -176,100 +157,94 @@ def processRom():
                         languageTags.append(splitTag)       # Add it to the languageTags list
                         auditLogAddTags("languageTags", splitTag)
                     else:                                   # Else if the tag cannot be matched
-                        miscTags.append(splitTag)           # Add it to the miscTags list
-                        auditLogAddTags("miscTags", splitTag)
-        print("DEBUG: regionTags is:", regionTags, type(regionTags))
+                        print("DEBUG: splittag in else is:", splitTag, type(splitTag))
+                        if re.findall(r'PAL.*', splitTag):
+                            regionTags.append("PAL")
+                            auditLogAddTags("regionTags", splitTag)
+                        #elif re.findall(r'NTSC.*', splitTag):
+                        #    regionTags.append("NTSC")
+                        #    auditLogAddTags("regionTags", splitTag)
+                        else:
+                            miscTags.append(splitTag)           # Add it to the miscTags list
+                            auditLogAddTags("miscTags", splitTag)
+        #print("DEBUG: regionTags is:", regionTags, type(regionTags))
         tags = { "regionTags" : regionTags, "languageTags" : languageTags, "miscTags" : miscTags } # Save scarped tag info to dictionary
         return tags
-            
+
     def moveRom(rom, tags):
-        usaPath = extPath + "/USA"
-        eurPath = extPath + "/Europe"
-        jpnPath = extPath + "/Japan"
-        worPath = extPath + "/World"
-        #print("DEBUG: eurPath is", eurPath, type(eurPath), "jpnPath is", jpnPath, type(jpnPath), "worPath is", worPath, type(worPath),  )
-    
+
+        def romMover(srtFolder, rom):
+            moveRomDest = extPath + "/" + srtFolder + "/"  # FIX IN FUTURE THIS WILL CAUSE PROBLEMS WITH KEEPING US IN ROOT
+            print("DEBUG: moveRomDest is:", moveRomDest, type(moveRomDest))
+            
+            if os.path.isdir(moveRomDest):
+                os.replace(extPath + "/" + rom, moveRomDest + rom)
+                auditLogAddLn(srtFolder, rom)
+                print("DEBUG: *** Moved rom to", srtFolder, " ***")
+            else:
+                makeDir(srtFolder)
+                romMover(srtFolder, rom)
+                
         # Match by region  
         if tags["regionTags"]:                                          # If regionTags dictionary entry is not empty
             for tag in tags["regionTags"]:
                 if "USA" in tags["regionTags"]:                             # Attempt to bail out early by matching on master sort region
-                    os.replace(extPath + "/" + rom, usaPath + "/" + rom)
-                    auditLogAddLn("USA", rom)
-                    print("DEBUG: *** Moved rom to", usaPath, " ***")
+                    romMover("USA", rom)
                     return 0
                 elif tag == "Japan":
                     print("DEBUG: len(tags[regionTags]) is:", len(tags["regionTags"]), type(len(tags["regionTags"])))
                     if len(tags["regionTags"]) == 1:
-                        os.replace(extPath + "/" + rom, jpnPath + "/" + rom)
-                        auditLogAddLn("Japan", rom)
-                        print("DEBUG: *** Moved rom to", jpnPath, " ***")
+                        romMover("Japan", rom)
                         return 0
                     elif tags["regionTags"][1] in romRegion.keys(): 
                         if len(tags["languageTags"]) >= 1 and tags["languageTags"][0] != "Ja":
                             continue
                         else:
-                            os.replace(extPath + "/" + rom, jpnPath + "/" + rom)
-                            auditLogAddLn("Japan", rom)
-                            print("DEBUG: *** Moved rom to", jpnPath, " ***")
+                            romMover("Japan", rom)
                             return 0
                     else:
-                        os.replace(extPath + "/" + rom, jpnPath + "/" + rom)
-                        auditLogAddLn("Japan", rom)
-                        print("DEBUG: *** Moved rom to", jpnPath, " ***")
+                        romMover("Japan", rom)
                         return 0
                 elif tag == "Europe":
-                    os.replace(extPath + "/" + rom, eurPath + "/" + rom)
-                    auditLogAddLn("Europe", rom)
-                    print("DEBUG: *** Moved rom to", eurPath, " ***")
+                    romMover("Europe", rom)
                     return 0
                 elif tag == "World":
-                    if not tags["languageTags"] or "En" in tags["languageTags"]:
-                        os.replace(extPath + "/" + rom, usaPath + "/" + rom)
-                        auditLogAddLn("USA", rom)
-                        print("DEBUG: *** Moved rom to", usaPath, " ***")
-                        return 0
+                    if len(tags["regionTags"]) == 1:
+                        if not tags["languageTags"] or "En" in tags["languageTags"]:
+                            romMover("USA", rom)
+                            return 0
+                        else:
+                            romMover("World", rom)
+                            return 0
                     else:
-                        os.replace(extPath + "/" + rom, worPath + "/" + rom)
-                        auditLogAddLn("World", rom)
-                        print("DEBUG: *** Moved rom to", worPath, " ***")
-                        return 0
+                        if "PAL" in tags["regionTags"]:
+                            romMover("Europe", rom)
+                            return 0
+                        else:
+                            romMover("USA", rom)
                 # We werent able to bail out
                 if tag in romRegion["USA"]:
                     if not tags["languageTags"] or "En" in tags["languageTags"]:
-                        os.replace(extPath + "/" + rom, usaPath + "/" + rom)
-                        auditLogAddLn("USA", rom)
-                        print("DEBUG: *** Moved rom to", usaPath, "folder ***")
+                        romMover("USA", rom)
                         return 0
                     else:
-                        os.replace(extPath + "/" + rom, worPath + "/" + rom)
-                        auditLogAddLn("World", rom)
-                        print("DEBUG: *** Moved rom to", worPath, " ***")
+                        romMover("World", rom)
                         return 0
                 elif tag in romRegion["Japan"]:
-                        os.replace(extPath + "/" + rom, jpnPath + "/" + rom)
-                        auditLogAddLn("Japan", rom)
-                        print("DEBUG: *** Moved rom to", jpnPath, " ***")
+                        romMover("Japan", rom)
                         return 0
                 elif tag in romRegion["Europe"]:
-                    os.replace(extPath + "/" + rom, eurPath + "/" + rom)
-                    auditLogAddLn("Europe", rom)
-                    print("DEBUG: *** Moved rom to", eurPath, " ***")
+                    romMover("Europe", rom)
                     return 0
                 elif tag in romRegion["World"]:
-                    os.replace(extPath + "/" + rom, worPath + "/" + rom)
-                    auditLogAddLn("World", rom)
-                    print("DEBUG: *** Moved rom to", worPath, " ***")
+                    romMover("World", rom)
                     return 0
                 elif tag in romRegion["EurWor"]:
                     if "En" in tags["languageTags"]:
-                        os.replace(extPath + "/" + rom, eurPath + "/" + rom)
-                        auditLogAddLn("Europe", rom)
-                        print("DEBUG: *** Moved rom to", eurPath, " ***")
+                        romMover("Europe", rom)
                         return 0
                     else:
-                        os.replace(extPath + "/" + rom, worPath + "/" + rom)
-                        auditLogAddLn("World", rom)
-                        print("DEBUG: *** Moved rom to", worPath, " ***")
+                        romMover("World", rom)
                         return 0
                 else:
                     continue
@@ -279,27 +254,16 @@ def processRom():
                 ("DEBUG: *** REGIONLESS En ROM LEFT IN ROOT ***")
                 return 0
             elif "Ja" in tags["languageTags"]:
-                os.replace(extPath + "/" + rom, jpnPath + "/" + rom)
-                auditLogAddLn("Japan", rom)
-                print("DEBUG: *** REGIONLESS Jp ROM MOVED TO", jpnPath, " ***")
+                romMover("Japan", rom)
+                print("DEBUG: *** REGIONLESS Jp ROM MOVED TO Japan ***")
                 return 0
             else:
-                os.replace(extPath + "/" + rom, worPath + "/" + rom)
-                auditLogAddLn("World", rom)
+                romMover("World", rom)
                 print("DEBUG: *** REGIONLESS ROM WITH Lng MOVED TO", worPath, " ***")
                 return 0
         else:
             ("DEBUG: *** UNMATCHED ROM LEFT IN ROOT ***")
             return 1
-
-    print("DEBUG: romRegion USA is", romRegion["USA"], type(romRegion["USA"]))
-    print("DEBUG: romRegion[Japan] is", romRegion["Japan"], type(romRegion["Japan"]))
-    print("DEBUG: romRegion[Europe] is", romRegion["Europe"], type(romRegion["Europe"]))
-    print("DEBUG: romRegion[EurWor] is", romRegion["EurWor"], type(romRegion["EurWor"]))
-    print("DEBUG: romRegion[World] is", romRegion["World"], type(romRegion["World"]))
-    print("DEBUG: romLang is", romLang, type(romLang))
-    
-    makeDirs()
 
     for rom in os.listdir(extPath):                                         # For each of the Rom Files in the extraction path
         print("DEBUG: WORKING ON ROM", rom, type(rom))
