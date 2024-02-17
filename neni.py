@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2024
-#####	v0.5
+#####	v0.7
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -11,7 +11,8 @@
 #####       0.3  Improved Tag Scraping Logic
 #####       0.4  Functionalized rom movement
 #####       0.5  Functionalized sort dir creation and create only as needed
-
+#####       0.6  Added move buffer for --dry-run mode
+#####       0.7  Rewrote audit log to use move buffer data
 
 import re
 import os
@@ -19,6 +20,7 @@ import subprocess
 import sys
 from itertools import chain 
 import argparse
+import time
 
 # Gets the arguments passed to the script from bash
 parser = argparse.ArgumentParser( description='Processes a given No-Intro archive, sorts by region into sub directories',
@@ -50,6 +52,70 @@ else:                                           # If the script was run with arg
     print("DEBUG: sys.argv[1:] is ", sys.argv[1:], "type is ", type(sys.argv[1:]))
     zipFile = os.path.abspath(flags.zipFile)
     print("DEBUG: zipFile is", zipFile, type(zipFile))
+
+def auditLog():
+    global auditLogWrite    # Global sub-function to write the log buffer to file
+    global auditLogAddTags
+        
+    # Adds a tag to the collected tag buffer
+    def auditLogAddTags(auditLogAddTagGrp, auditLogAddTagTag):
+        auditLogTags[auditLogAddTagGrp].append(auditLogAddTagTag)
+
+    # Processes audit log buffers and writes them to a file in the extraction directory
+    def auditLogWrite():
+        #print("DEBUG: extPath in auditLogWrite is", extPath, type(extPath))
+        #print("DEBUG: auditFn is", auditFn, type(auditFn))
+        #print("DEBUG: auditLogBuffer in auditLogWrite is", auditLogBuffer, type(auditLogBuffer))
+        auditFPath = extPath + "/" + auditFn
+        auditFile = open(auditFPath, "a")
+        
+        # Process the tag buffer and add it to the log buffer
+        print("DEBUG: auditLogTags is", auditLogTags, type(auditLogTags))
+        print("DEBUG: moveBuffer[ColTag] is", moveBuffer["ColTag"], type(moveBuffer["ColTag"]))
+        for auditLogTagGrp in auditLogTags.keys():
+            #print("DEBUG: auditLogTagGrp is", auditLogTagGrp, type(auditLogTagGrp))
+            if auditLogTags[auditLogTagGrp]:
+                #print("DEBUG: Entered auditLogTags if")
+                moveBuffer["ColTag"].append(auditLogTagGrp.upper() + ":")           # CAN WE DIRECTLY ADD TO COLTAG NOW?
+                # Deduplicate and sort the tag collection
+                auditLogTagsSort = list(set(auditLogTags[auditLogTagGrp]))
+                auditLogTagsSort.sort()
+                #print("DEBUG: auditLogTagsSort is", auditLogTagsSort, type(auditLogTagsSort))
+                for auditLogTagTag in auditLogTagsSort:
+                    #print("DEBUG: auditLogTagTag is", auditLogTagTag, type(auditLogTagTag))
+                    # Count occurances of tag in tag collection
+                    auditLogTagCnt = auditLogTags[auditLogTagGrp].count(auditLogTagTag)
+                    #print("DEBUG: auditLogTagCnt is", auditLogTagCnt, type(auditLogTagCnt))
+                    #Append tag to ColTag buffer
+                    moveBuffer["ColTag"].append(auditLogTagTag + " " + str(auditLogTagCnt))
+            else:
+                #print("DEBUG: Entered auditLogTags continue")
+                continue
+            moveBuffer["ColTag"].append("")
+        
+        # Process the log buffer and write it to disk
+        for auditLogGrp in moveBuffer.keys():
+            if auditLogGrp is "ColTag":
+                auditFile.write("### Tags That Were Scraped From File Names ###" + '\n')
+            elif auditLogGrp is "UnKwn":
+                auditFile.write("### Files That Were Unmatched ###" + '\n')
+            else:
+                auditFile.write("### Files That Matched the " + auditLogGrp + " Region ###" + '\n')
+            #print("DEBUG: auditLogGrp is", auditLogGrp, type(auditLogGrp))
+            for auditLogLn in moveBuffer[auditLogGrp]:
+                #print("DEBUG: auditLogLn is", auditLogLn, type(auditLogLn))
+                auditFile.write(auditLogLn + '\n')
+            auditFile.write('\n')
+        auditFile.close()
+    
+    # Determine what the audit log file will be named
+    if flags.relVers:
+        print("DEBUG: flags.relVers is", ' '.join(flags.relVers), type(' '.join(flags.relVers)))
+        auditFn = "[ " + ' '.join(flags.relVers) + " No-Intro Set ]"
+    else:
+        auditFn = "[ " + zipFn + " No-Intro Set ]"
+    
+    auditLogTags = { "regionTags" : [], "languageTags" : [], "miscTags" : [] }
 
 # Checks if target file is a zip file
 def checkZip():
@@ -108,6 +174,7 @@ def processRom():
     global worPath
     global usaPath
     global regions
+    global makeDir
     
     romRegion = {
             "USA": ( "USA", "Canada" ),
@@ -171,80 +238,67 @@ def processRom():
         tags = { "regionTags" : regionTags, "languageTags" : languageTags, "miscTags" : miscTags } # Save scarped tag info to dictionary
         return tags
 
-    def moveRom(rom, tags):
-
-        def romMover(srtFolder, rom):
-            moveRomDest = extPath + "/" + srtFolder + "/"  # FIX IN FUTURE THIS WILL CAUSE PROBLEMS WITH KEEPING US IN ROOT
-            print("DEBUG: moveRomDest is:", moveRomDest, type(moveRomDest))
-            
-            if os.path.isdir(moveRomDest):
-                os.replace(extPath + "/" + rom, moveRomDest + rom)
-                auditLogAddLn(srtFolder, rom)
-                print("DEBUG: *** Moved rom to", srtFolder, " ***")
-            else:
-                makeDir(srtFolder)
-                romMover(srtFolder, rom)
-                
+    def sortRom(rom, tags):                
         # Match by region  
         if tags["regionTags"]:                                          # If regionTags dictionary entry is not empty
             for tag in tags["regionTags"]:
                 if "USA" in tags["regionTags"]:                             # Attempt to bail out early by matching on master sort region
-                    romMover("USA", rom)
+                    moveRomAdd("USA", rom)
                     return 0
                 elif tag == "Japan":
                     print("DEBUG: len(tags[regionTags]) is:", len(tags["regionTags"]), type(len(tags["regionTags"])))
                     if len(tags["regionTags"]) == 1:
-                        romMover("Japan", rom)
+                        moveRomAdd("Japan", rom)
                         return 0
                     elif tags["regionTags"][1] in romRegion.keys(): 
                         if len(tags["languageTags"]) >= 1 and tags["languageTags"][0] != "Ja":
                             continue
                         else:
-                            romMover("Japan", rom)
+                            moveRomAdd("Japan", rom)
                             return 0
                     else:
-                        romMover("Japan", rom)
+                        moveRomAdd("Japan", rom)
                         return 0
                 elif tag == "Europe":
-                    romMover("Europe", rom)
+                    moveRomAdd("Europe", rom)
                     return 0
                 elif tag == "World":
                     if len(tags["regionTags"]) == 1:
                         if not tags["languageTags"] or "En" in tags["languageTags"]:
-                            romMover("USA", rom)
+                            moveRomAdd("USA", rom)
                             return 0
                         else:
-                            romMover("World", rom)
+                            moveRomAdd("World", rom)
                             return 0
                     else:
                         if "PAL" in tags["regionTags"]:
-                            romMover("Europe", rom)
+                            moveRomAdd("Europe", rom)
                             return 0
                         else:
-                            romMover("USA", rom)
+                            moveRomAdd("USA", rom)
                 # We werent able to bail out
                 if tag in romRegion["USA"]:
                     if not tags["languageTags"] or "En" in tags["languageTags"]:
-                        romMover("USA", rom)
+                        moveRomAdd("USA", rom)
                         return 0
                     else:
-                        romMover("World", rom)
+                        moveRomAdd("World", rom)
                         return 0
                 elif tag in romRegion["Japan"]:
-                        romMover("Japan", rom)
+                        moveRomAdd("Japan", rom)
                         return 0
                 elif tag in romRegion["Europe"]:
-                    romMover("Europe", rom)
+                    moveRomAdd("Europe", rom)
                     return 0
                 elif tag in romRegion["World"]:
-                    romMover("World", rom)
+                    moveRomAdd("World", rom)
                     return 0
                 elif tag in romRegion["EurWor"]:
                     if "En" in tags["languageTags"]:
-                        romMover("Europe", rom)
+                        moveRomAdd("Europe", rom)
                         return 0
                     else:
-                        romMover("World", rom)
+                        moveRomAdd("World", rom)
                         return 0
                 else:
                     continue
@@ -254,11 +308,11 @@ def processRom():
                 ("DEBUG: *** REGIONLESS En ROM LEFT IN ROOT ***")
                 return 0
             elif "Ja" in tags["languageTags"]:
-                romMover("Japan", rom)
+                moveRomAdd("Japan", rom)
                 print("DEBUG: *** REGIONLESS Jp ROM MOVED TO Japan ***")
                 return 0
             else:
-                romMover("World", rom)
+                moveRomAdd("World", rom)
                 print("DEBUG: *** REGIONLESS ROM WITH Lng MOVED TO", worPath, " ***")
                 return 0
         else:
@@ -270,84 +324,57 @@ def processRom():
         if rom.endswith(".zip") and '[BIOS]' not in rom:                    # If the file is a archive, and is not a bios
             tags = gatherTags(rom)                                          # Scrape rom name for tags to process
             print("DEBUG: tags are:", tags, type(tags))
-            results = moveRom(rom, tags)                                    # Process tags and move roms into folders
+            results = sortRom(rom, tags)                                    # Process tags and move roms into folders
             print("DEBUG: results of romMove is", results, type(results))
             if results != 0:
-                auditLogAddLn("UnKwn", rom)
+                #auditLogAddLn("UnKwn", rom)
                 print("DEBUG: *** Left in root folder ***")
         else:
             continue
-        
+
 # Maintains a log of actions performed by the script
-def auditLog():
-    global auditLogAddTags  # Global sub-function to add tags to tag buffer
-    global auditLogAddLn    # Global sub-function to add lines to log buffer
-    global auditLogWrite    # Global sub-function to write the log buffer to file
+def moveRom():
+    global moveRomAdd       # Global sub-function to add lines to log buffer
+    global romMover         # Does this need to be a global?
+    global processBuffer
+    global moveBuffer
+    
+    # Moves Processed Roms
+    def romMover(srtFolder, rom):
+        sortRomDest = extPath + "/" + srtFolder + "/" # FIX IN FUTURE THIS WILL CAUSE PROBLEMS WITH KEEPING US IN ROOT
+        if not os.path.isdir(sortRomDest):
+            makeDir(srtFolder)
+        os.replace(extPath + "/" + rom, sortRomDest + rom)
+        print("DEBUG: *** Moved rom to", srtFolder, " ***")
+        return 0
+    
+    def processBuffer():
+        print("Debug: entered processbugger")
+        for moveRomGrp in moveBuffer.keys():
+            if moveBuffer[moveRomGrp]:
+                print("Debug: entered movebuffer")
+                print("DEBUG: moveRomGrp is:", moveRomGrp, type(moveRomGrp))
+                if "ColTag" == moveRomGrp  or "Unkwn" == moveRomGrp:
+                    print("Debug: entered movebuffer continue")
+                    # If either of these only call audit log write cause we're not moving
+                    continue
+                else:
+                    print("Debug: entered movebuffer else")
+                    for moveRomRom in moveBuffer[moveRomGrp]:
+                        #print("DEBUG: moveBuffer[moveRomGrp] is:", moveBuffer[moveRomGrp], type(moveBuffer[moveRomGrp]))
+                        if romMover(moveRomGrp, moveRomRom) == 0:
+                            continue
+                        else:
+                            print("ERROR: *** Failed to Move rom to", moveRomGrp, " ***")
+                            exit(1)
+            else:
+                continue
     
     # Adds a line to the logline buffer sort catagory
-    def auditLogAddLn(auditLogGrp, auditLogLine):
-        auditLogBuffer[auditLogGrp].append(auditLogLine)
-    
-    # Adds a tag to the collected tag buffer
-    def auditLogAddTags(auditLogAddTagGrp, auditLogAddTagTag):
-        auditLogTags[auditLogAddTagGrp].append(auditLogAddTagTag)
-    
-    # Processes audit log buffers and writes them to a file in the extraction directory
-    def auditLogWrite():
-        #print("DEBUG: extPath in auditLogWrite is", extPath, type(extPath))
-        #print("DEBUG: auditFn is", auditFn, type(auditFn))
-        #print("DEBUG: auditLogBuffer in auditLogWrite is", auditLogBuffer, type(auditLogBuffer))
-        auditFPath = extPath + "/" + auditFn
-        auditFile = open(auditFPath, "a")
-        
-        # Process the tag buffer and add it to the log buffer
-        #print("DEBUG: auditLogTags is", auditLogTags, type(auditLogTags))
-        for auditLogTagGrp in auditLogTags.keys():
-            #print("DEBUG: auditLogTagGrp is", auditLogTagGrp, type(auditLogTagGrp))
-            if auditLogTags[auditLogTagGrp]:
-                #print("DEBUG: Entered auditLogTags if")
-                auditLogBuffer["ColTag"].append(auditLogTagGrp.upper() + ":")
-                # Deduplicate and sort the tag collection
-                auditLogTagsSort = list(set(auditLogTags[auditLogTagGrp]))
-                auditLogTagsSort.sort()
-                #print("DEBUG: auditLogTagsSort is", auditLogTagsSort, type(auditLogTagsSort))
-                for auditLogTagTag in auditLogTagsSort:
-                    #print("DEBUG: auditLogTagTag is", auditLogTagTag, type(auditLogTagTag))
-                    # Count occurances of tag in tag collection
-                    auditLogTagCnt = auditLogTags[auditLogTagGrp].count(auditLogTagTag)
-                    #print("DEBUG: auditLogTagCnt is", auditLogTagCnt, type(auditLogTagCnt))
-                    #Append tag to ColTag buffer
-                    auditLogBuffer["ColTag"].append(auditLogTagTag + " " + str(auditLogTagCnt))
-            else:
-                #print("DEBUG: Entered auditLogTags continue")
-                continue
-            auditLogBuffer["ColTag"].append("")
-        
-        # Process the log buffer and write it to disk
-        for auditLogGrp in auditLogBuffer.keys():
-            #print("DEBUG: auditLogGrp is", auditLogGrp, type(auditLogGrp))
-            for auditLogLn in auditLogBuffer[auditLogGrp]:
-                #print("DEBUG: auditLogLn is", auditLogLn, type(auditLogLn))
-                auditFile.write(auditLogLn + '\n')
-        
-        auditFile.close()
-    
-    auditLogTags = { "regionTags" : [], "languageTags" : [], "miscTags" : [] }
-    auditLogBuffer = {
-        "ColTag": [ "### Tags That Were Scraped From File Names ###" ],
-        "USA": [ "### Files That Matched the USA Region ###" ],
-        "Japan": [ "\n### Files That Matched the Japan Region ###" ],
-        "Europe": [ "\n### Files That Matched a European Region ###" ],
-        "World": [ "\n### Files That Matched a World Region ###" ],
-        "UnKwn": [ "\n### Files That Were unmatched ###" ]
-    }
-    
-    # Determine what the audit log file will be named
-    if flags.relVers:
-        print("DEBUG: flags.relVers is", ' '.join(flags.relVers), type(' '.join(flags.relVers)))
-        auditFn = "[ " + ' '.join(flags.relVers) + " No-Intro Set ]"
-    else:
-        auditFn = "[ " + zipFn + " No-Intro Set ]"
+    def moveRomAdd(srtGrp, rom):
+        moveBuffer[srtGrp].append(rom)
+
+    moveBuffer = { "ColTag": [], "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
     
 # BASH ENGINE: Runs commands in a bash shell
 def execBash(execBash_CMD):
@@ -362,7 +389,9 @@ def mainRoutine():
     auditLog()              # Creates and manages a log file
     checkZip()              # Performs sanity checks on target file
     unzip()                 # Unzips target file
+    moveRom()
     processRom()            # Processes roms based on region and language and moves them into sub-folders
+    processBuffer()
     auditLogWrite()         # Writes log buffer to file
     exit(0)
 	
