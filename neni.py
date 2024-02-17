@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2024
-#####	v0.7
+#####	v0.8
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -12,7 +12,8 @@
 #####       0.4  Functionalized rom movement
 #####       0.5  Functionalized sort dir creation and create only as needed
 #####       0.6  Added move buffer for --dry-run mode
-#####       0.7  Rewrote audit log to use move buffer data
+#####       0.7  Rewrote audit log to use move buffer data instead of independent buffer
+#####       0.8  Further design changes audit log, added a message buffer
 
 import re
 import os
@@ -20,7 +21,7 @@ import subprocess
 import sys
 from itertools import chain 
 import argparse
-import time
+from datetime import datetime
 
 # Gets the arguments passed to the script from bash
 parser = argparse.ArgumentParser( description='Processes a given No-Intro archive, sorts by region into sub directories',
@@ -40,6 +41,12 @@ print("DEBUG: sys.argv is", sys.argv, "type is", type(sys.argv))
 
 global zipFile
 global scriptFn
+global exeTime
+now = datetime.now()
+exeTime = now.strftime("%m/%d/%Y %H:%M:%S")
+
+print("DEBUG: now is", now, type(now))
+
 scriptFn = sys.argv[0]
 try:
     os.path.isdir(flags.zipFile)                                 # Checks to see if script was called without arguments
@@ -59,52 +66,99 @@ def auditLog():
         
     # Adds a tag to the collected tag buffer
     def auditLogAddTags(auditLogAddTagGrp, auditLogAddTagTag):
-        auditLogTags[auditLogAddTagGrp].append(auditLogAddTagTag)
-
+        moveBuffer["ColTag"][auditLogAddTagGrp].append(auditLogAddTagTag)
+    
     # Processes audit log buffers and writes them to a file in the extraction directory
     def auditLogWrite():
-        #print("DEBUG: extPath in auditLogWrite is", extPath, type(extPath))
-        #print("DEBUG: auditFn is", auditFn, type(auditFn))
-        #print("DEBUG: auditLogBuffer in auditLogWrite is", auditLogBuffer, type(auditLogBuffer))
+        auditLogTagCnted = []
         auditFPath = extPath + "/" + auditFn
         auditFile = open(auditFPath, "a")
         
+        def cntRoms():
+            auditRomsCnted = []
+            for cntRomGrp in moveBuffer.keys():
+                #print("DEBUG: entered cntRom for")
+                if cntRomGrp != "ColTag":
+                    #print("DEBUG: entered cntRom if not")
+                    #print("DEBUG: len(moveBuffer[" + cntRomGrp +"]) is", len(moveBuffer[cntRomGrp]), type(len(moveBuffer[cntRomGrp])))
+                    auditRomsCnted.append(cntRomGrp)
+                    auditRomsCnted.append(len(moveBuffer[cntRomGrp]))
+                    #print("DEBUG: auditRomsCnted is", auditRomsCnted, type(auditRomsCnted))
+            auditRomsTotals = { grp:ttl for (grp,ttl) in zip(auditRomsCnted[::2], auditRomsCnted[1::2])}  
+            auditRomsTotals["Total"] = sum(auditRomsCnted[1::2])
+            #print("DEBUG: auditRomsTotals is", auditRomsTotals, type(auditRomsTotals))
+            #print("DEBUG: sum is", sum(auditRomsCnted[1::2]), type(sum(auditRomsCnted[1::2])))
+            print("DEBUG: auditRomsTotals is", auditRomsTotals, type(auditRomsTotals))
+            return auditRomsTotals
+                   
         # Process the tag buffer and add it to the log buffer
-        print("DEBUG: auditLogTags is", auditLogTags, type(auditLogTags))
-        print("DEBUG: moveBuffer[ColTag] is", moveBuffer["ColTag"], type(moveBuffer["ColTag"]))
-        for auditLogTagGrp in auditLogTags.keys():
-            #print("DEBUG: auditLogTagGrp is", auditLogTagGrp, type(auditLogTagGrp))
-            if auditLogTags[auditLogTagGrp]:
-                #print("DEBUG: Entered auditLogTags if")
-                moveBuffer["ColTag"].append(auditLogTagGrp.upper() + ":")           # CAN WE DIRECTLY ADD TO COLTAG NOW?
-                # Deduplicate and sort the tag collection
-                auditLogTagsSort = list(set(auditLogTags[auditLogTagGrp]))
-                auditLogTagsSort.sort()
-                #print("DEBUG: auditLogTagsSort is", auditLogTagsSort, type(auditLogTagsSort))
-                for auditLogTagTag in auditLogTagsSort:
-                    #print("DEBUG: auditLogTagTag is", auditLogTagTag, type(auditLogTagTag))
-                    # Count occurances of tag in tag collection
-                    auditLogTagCnt = auditLogTags[auditLogTagGrp].count(auditLogTagTag)
-                    #print("DEBUG: auditLogTagCnt is", auditLogTagCnt, type(auditLogTagCnt))
-                    #Append tag to ColTag buffer
-                    moveBuffer["ColTag"].append(auditLogTagTag + " " + str(auditLogTagCnt))
-            else:
-                #print("DEBUG: Entered auditLogTags continue")
-                continue
-            moveBuffer["ColTag"].append("")
+        #print("DEBUG: moveBuffer[ColTag][regionTags] is", moveBuffer["ColTag"]["regionTags"], type(moveBuffer["ColTag"]["regionTags"]))
+        #print("DEBUG: moveBuffer[ColTag][languageTags] is", moveBuffer["ColTag"]["languageTags"], type(moveBuffer["ColTag"]["languageTags"]))
+        #print("DEBUG: moveBuffer[ColTag][miscTags] is", moveBuffer["ColTag"]["miscTags"], type(moveBuffer["ColTag"]["miscTags"]))
+        
+        def cntTags():
+            auditLogTagCnted = [ [], [] ]
+            auditLogTagCnt = []                                                             # Create empty list to hold the counts
+            for auditLogTagGrp in moveBuffer["ColTag"].keys():                              # For each of the catagories in the Collected Tags
+                if moveBuffer["ColTag"][auditLogTagGrp]:                                    # If the catagory has tags
+                    print("DEBUG: auditLogTagGrp is", auditLogTagGrp, type(auditLogTagGrp))
+                    # Deduplicate and sort the tag collection
+                    auditLogTagsSort = list(set(moveBuffer["ColTag"][auditLogTagGrp]))      # Dedpuelicate by using set, return a list
+                    auditLogTagsSort.sort()                                                 # Sort the Dedupelicated list
+                    auditLogTagCnted[0].append("TOTALS")                                      # Add blank space as first item for formatting
+                    auditLogTagCnted[1].append(auditLogTagGrp.upper() + ":")             # Add the tag catagory in uppercase as first item
+                    print("DEBUG: auditLogTagCnted[0],[1] is", auditLogTagCnted[0], type(auditLogTagCnted[1]), auditLogTagCnted[1], type(auditLogTagCnted[1]))
+                    for auditLogTagTag in auditLogTagsSort:                                 # For each of the tags in the sorted list
+                        # Count occurances of tag in tag collection
+                        auditLogTagCnt = moveBuffer["ColTag"][auditLogTagGrp].count(auditLogTagTag)
+                        # Append tag to ColTag list
+                        auditLogTagCnted[0].append(str(auditLogTagCnt))
+                        auditLogTagCnted[1].append(auditLogTagTag)
+                else: 
+                    continue
+                auditLogTagCnted[0].append("")                                      # Add blank space as first item for formatting
+                auditLogTagCnted[1].append("")
+                #auditLogTagCnt.append(sum( ) # Sum the totals for each catagory
+            print("DEBUG: auditLogTagCnted is", auditLogTagCnted, type(auditLogTagCnted))
+            return auditLogTagCnted     # Return counted lists to add them to the moveBuffer
+        
+        moveBuffer["Totals"] = cntRoms()
+        moveBuffer["ColTag"] = cntTags()
+        print("DEBUG: moveBufferTotals after is", moveBuffer["Totals"], type(moveBuffer["Totals"]))
+        
+        # Write the audit log header information
+        auditFile.write("No Effort No Intro" + '\n')
+        auditFile.write("   Audit Log" + '\n\n')
+        auditFile.write("Created on:    " + exeTime + '\n')
+        auditFile.write("Processed:     " + flags.zipFile + '\n')
+        auditFile.write("Extracted to:  " + extPath + '\n')
+        auditFile.write("Total Files:   " + str(moveBuffer["Totals"]["Total"]) + '\n\n')
         
         # Process the log buffer and write it to disk
         for auditLogGrp in moveBuffer.keys():
-            if auditLogGrp is "ColTag":
+            print("DEBUG: auditLogGrp is", auditLogGrp, type(auditLogGrp))
+            if auditLogGrp == "ColTag":
+                print("DEBUG: moveBuffer[auditLogGrp][0] is", moveBuffer[auditLogGrp][0], type(moveBuffer[auditLogGrp][0]))
+                print("DEBUG: moveBuffer[auditLogGrp][1] is", moveBuffer[auditLogGrp][1], type(moveBuffer[auditLogGrp][1]))
                 auditFile.write("### Tags That Were Scraped From File Names ###" + '\n')
-            elif auditLogGrp is "UnKwn":
+                for auditLogLn in moveBuffer[auditLogGrp][1]:
+                    index = int(moveBuffer[auditLogGrp][1].index(auditLogLn))
+                    #print("DEBUG: index is", index, type(index))
+                    #print("DEBUG: index", index, "is", str(moveBuffer[auditLogGrp][0][index]) + str(moveBuffer[auditLogGrp][1][index]))
+                    auditFile.write(str(moveBuffer[auditLogGrp][0][index]).rjust(6, ' ') + " " + str(moveBuffer[auditLogGrp][1][index]) + '\n')
+                    # Add blank line at end of list for formatting
+                auditFile.write('\n')
+                continue
+            elif auditLogGrp == "UnKwn":
                 auditFile.write("### Files That Were Unmatched ###" + '\n')
             else:
-                auditFile.write("### Files That Matched the " + auditLogGrp + " Region ###" + '\n')
-            #print("DEBUG: auditLogGrp is", auditLogGrp, type(auditLogGrp))
+                if auditLogGrp != "Totals":
+                    print("DEBUG: str(moveBuffer[Totals][auditLogGrp]) is", str(moveBuffer["Totals"][auditLogGrp]), type(str(moveBuffer["Totals"][auditLogGrp])))
+                    auditFile.write("### " + str(moveBuffer["Totals"][auditLogGrp]) + " Files Matched the " + auditLogGrp + " Region ###" + '\n')
+                #print("DEBUG: auditLogGrp is", auditLogGrp, type(auditLogGrp))
             for auditLogLn in moveBuffer[auditLogGrp]:
                 #print("DEBUG: auditLogLn is", auditLogLn, type(auditLogLn))
-                auditFile.write(auditLogLn + '\n')
+                auditFile.write(str(auditLogLn) + '\n')
             auditFile.write('\n')
         auditFile.close()
     
@@ -115,7 +169,7 @@ def auditLog():
     else:
         auditFn = "[ " + zipFn + " No-Intro Set ]"
     
-    auditLogTags = { "regionTags" : [], "languageTags" : [], "miscTags" : [] }
+    #auditLogTags = { "regionTags" : [], "languageTags" : [], "miscTags" : [] }
 
 # Checks if target file is a zip file
 def checkZip():
@@ -146,8 +200,7 @@ def checkZip():
     		
 def unzip():
         global extPath
-        
-        print("DEBUG: entered unzip")
+
         extPath = os.path.join(zipPath, zipFnRoot)
         bashCMD = flags.unzipCMD, '-d', '\'' + extPath + '\'', '\'' + zipFile + '\''
         print("DEBUG: extPath is", extPath, type(extPath))
@@ -195,28 +248,24 @@ def processRom():
             else:
                 pass
         else:
-            print("DEBUG: ENABLE TO CREATE SORT DIRECTORY EXITING")
+            print("DEBUG: UNABLE TO CREATE SORT DIRECTORY EXITING")
             exit(1)
 
     def gatherTags(rom):    # Scraps tags from Rom file name
         regionTags = []     # Create empty list for region tags
         languageTags = []   # Create empty list for language tags
         miscTags = []       # Create empty list for misc tags
-        #print("DEBUG: regions is:", regions, type(regions)) 
         
         tagsCollected = re.findall(r'\((?=[^(]*\))(.*?)\)', rom)    # Scrape file name in reverse for all occurrences of (***) matching only complete (***)
         for tag in tagsCollected:                                   # For each of the collected tags
             tagSplit = tag.split(',')                               # Split the tags on commas
             for splitTag in tagSplit:                               # For each of the individual tags
                 splitTag = splitTag.strip()                         # Strip whitespace
-                #print("DEBUG: splittag is:", splitTag, type(splitTag))
                 if "+" in splitTag:
                     splitTag = splitTag.split('+')
-                    #print("DEBUG: splittag after split:", splitTag, type(splitTag))             # Maybe try to read the file name in reverse to avoid unclosed errors
                     tagSplit.extend(splitTag)
                     continue
                 else:
-                    #print("DEBUG: splitTag is:", splitTag, type(splitTag))
                     if splitTag in regions:                 # If the tag can be found in the regions list
                         regionTags.append(splitTag)         # Add it to the regionTags list
                         auditLogAddTags("regionTags", splitTag)
@@ -228,13 +277,9 @@ def processRom():
                         if re.findall(r'PAL.*', splitTag):
                             regionTags.append("PAL")
                             auditLogAddTags("regionTags", splitTag)
-                        #elif re.findall(r'NTSC.*', splitTag):
-                        #    regionTags.append("NTSC")
-                        #    auditLogAddTags("regionTags", splitTag)
                         else:
                             miscTags.append(splitTag)           # Add it to the miscTags list
                             auditLogAddTags("miscTags", splitTag)
-        #print("DEBUG: regionTags is:", regionTags, type(regionTags))
         tags = { "regionTags" : regionTags, "languageTags" : languageTags, "miscTags" : miscTags } # Save scarped tag info to dictionary
         return tags
 
@@ -246,7 +291,6 @@ def processRom():
                     moveRomAdd("USA", rom)
                     return 0
                 elif tag == "Japan":
-                    print("DEBUG: len(tags[regionTags]) is:", len(tags["regionTags"]), type(len(tags["regionTags"])))
                     if len(tags["regionTags"]) == 1:
                         moveRomAdd("Japan", rom)
                         return 0
@@ -345,23 +389,18 @@ def moveRom():
         if not os.path.isdir(sortRomDest):
             makeDir(srtFolder)
         os.replace(extPath + "/" + rom, sortRomDest + rom)
-        print("DEBUG: *** Moved rom to", srtFolder, " ***")
+        print("DEBUG: *** Moved", '\033[1m' + '\033[36m' + rom + '\033[0m', "to", '\033[1m' + '\033[91m' + srtFolder + '\033[0m', "***")
         return 0
     
     def processBuffer():
-        print("Debug: entered processbugger")
         for moveRomGrp in moveBuffer.keys():
             if moveBuffer[moveRomGrp]:
-                print("Debug: entered movebuffer")
                 print("DEBUG: moveRomGrp is:", moveRomGrp, type(moveRomGrp))
                 if "ColTag" == moveRomGrp  or "Unkwn" == moveRomGrp:
-                    print("Debug: entered movebuffer continue")
                     # If either of these only call audit log write cause we're not moving
                     continue
                 else:
-                    print("Debug: entered movebuffer else")
                     for moveRomRom in moveBuffer[moveRomGrp]:
-                        #print("DEBUG: moveBuffer[moveRomGrp] is:", moveBuffer[moveRomGrp], type(moveBuffer[moveRomGrp]))
                         if romMover(moveRomGrp, moveRomRom) == 0:
                             continue
                         else:
@@ -374,7 +413,8 @@ def moveRom():
     def moveRomAdd(srtGrp, rom):
         moveBuffer[srtGrp].append(rom)
 
-    moveBuffer = { "ColTag": [], "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
+    moveBuffer = { "ColTag": { "regionTags" : [], "languageTags" : [], "miscTags" : [] }, 
+                   "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
     
 # BASH ENGINE: Runs commands in a bash shell
 def execBash(execBash_CMD):
