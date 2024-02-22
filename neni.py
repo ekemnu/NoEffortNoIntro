@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2024
-#####   0.13
+#####   0.14
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -19,7 +19,7 @@
 #####       0.11 Reworked audit file creation, messenger improvements, removed debug functions, bug fixes
 #####       0.12 Added ability to skip extraction, skip audit write, and set detestation and extraction directories
 #####       0.13 Added ability to choose home sort region
-
+#####       0.14 Handle multiple archives, create object instance for each rom from each archive
 
 import argparse
 import sys
@@ -59,7 +59,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.13')
+    parser.add_argument('--version', action='version', version='NenI 0.14')
     
     flags = parser.parse_args()
     return flags
@@ -77,9 +77,9 @@ def checkZip(flags):
         # Get the full path of the zip file
         zipFile = os.path.abspath(flags.zipFile)
         return zipFile
-            
+
 # Creates sort directories as needed and moves sorted files into directories
-def moveRom(extPath, outDest, zipPath, romList, homeRgn, ptend):
+def moveRom_old(move, extPath, outDest, zipPath, romList, homeRgn, ptend):
     # Creates the sort directories as needed
     def makeDir(extPath, srtFolder):
         if os.path.isdir(extPath):
@@ -88,28 +88,21 @@ def moveRom(extPath, outDest, zipPath, romList, homeRgn, ptend):
                 os.mkdir(extPath + "/" + srtFolder)
             else:
                 pass
-            
-    # Moves Roms to sort folders
-    def romMover(extPath, srtFolder, homeRgn, moveRomRom):            
-        if homeRgn == srtFolder:
-            srtRomDest = extPath + "/"
-        else:
-            srtRomDest = extPath + "/" + srtFolder + "/"
-        m.dv(locals(), "extPath", "srtFolder", "homeRgn", "moveRomRom")
-        if not os.path.isdir(srtRomDest):
-            makeDir(extPath, srtFolder)
-        shutil.move(extPath + "/" + moveRomRom,  srtRomDest + moveRomRom)
-        m.mv(moveRomRom, srtFolder)
-        return 0
-                 
+        
     # Executes the sort list, moving the roms to their sort folders
     m.dv(locals(), "romList")
     m.st("Moving Sorted Roms ...")
     if not ptend:
         for moveRomGrp in list(romList.keys())[1:5]:                         # for each group in the sorted roms list
             if romList[moveRomGrp]:                                         # If the sort region has entries
+                if homeRgn == moveRomGrp:
+                    srtRomDest = extPath + "/"
+                else:
+                    srtRomDest = extPath + "/" + moveRomGrp + "/"
+                if not os.path.isdir(srtRomDest):
+                    makeDir(extPath, moveRomGrp)
                 for moveRomRom in romList[moveRomGrp]:                      # For each rom in the rom list
-                    if romMover(extPath, moveRomGrp, homeRgn, moveRomRom) == 0:      # Move the rom and check for success 
+                    if move(extPath, srtRomDest, moveRomGrp, homeRgn, moveRomRom) == 0:      # Move the rom and check for success 
                         continue                                            # If successful move to next rom in list
                     else:                                                   # Fail if not successful
                         m.er("Failed to move rom to", moveRomGrp)
@@ -126,8 +119,57 @@ def moveRom(extPath, outDest, zipPath, romList, homeRgn, ptend):
     else:
         m.n("Skipping Rom Move Because We're Pretending")
         return 0
+
+# Creates sort directories as needed and moves sorted files into directories
+def moveRom(move, extPath, outDest, zipPath, romList, homeRgn, ptend):
+    # Creates the sort directories as needed
+    def makeDir(extPath, srtFolder):
+        if os.path.isdir(extPath):
+            if not os.path.isdir(extPath + "/" + srtFolder):
+                m.sb("Making folder", srtFolder, "at extraction path")
+                os.mkdir(extPath + "/" + srtFolder)
+            else:
+                pass
+        
+    # Executes the sort list, moving the roms to their sort folders
+    m.dv(locals(), "romList")
+    m.st("Moving Sorted Roms ...")
+    if not ptend:
+        # Iterate through the registry of romFile object instances
+        for rom in rArch.romFiles:                         # for each group in the sorted roms list
+            # Get the index of the instance on the list
+            # Set rom to that instance
+            rom = rArch.romFiles.index(rom) <<<<<
+            # Set the move location based on user selectable home region
+            if homeRgn == rom.srtRegion:
+                # >>>>> should i just pass here?
+                srtRomDest = extPath + "/"                              # Sort location is root extraction directory
+            else:
+                srtRomDest = extPath + "/" + moveRomGrp + "/"           # Sort location is a master region subfolder
+                # If the sort directory doesn't exist, create it
+                if not os.path.isdir(srtRomDest):
+                    makeDir(extPath, moveRomGrp)
+            # move the rom to it's destination
+            if move(extPath, srtRomDest, moveRomGrp, homeRgn, moveRomRom) == 0: # Move the rom and check for success 
+                continue                                                        # If successful move to next rom in list
+            else:                                                               # Fail if not successful
+                m.er("Failed to move rom to", moveRomGrp)
+                m.ex("Error")
+                sys.exit(1)
+        # Move the working directory to the final destination
+        m.st("Moving Working Directory to Output Destination...")
+        if outDest != extPath:
+            m.dv(locals(), "outDest", )
+            shutil.move(extPath, outDest)
+        else:
+            m.sb("Working Extraction Directory and Destination are Identical, Skipping")
+        return 0
+    else:
+        m.n("Skipping Rom Move Because We're Pretending")
+        return 0
+            
 # Stores information about the rom collection, and performs operations on it
-class romArchive():
+class rArch(object):
     # Variables that are shares with all objects in class    
     romRegion = {
             "USA": ( "USA", "Canada" ),
@@ -141,66 +183,76 @@ class romArchive():
     romRegions = list(chain(*romRegion.values()))       # Get a list of all regions in the romRegion dictionary
     
     # Variables that are specific to the instanced object
-    def __init__(roms, zipFile):
-        roms.zipFile = zipFile      # Stores the full path to the target archive
-        roms.zipPath = ""           # Stores the directory in which the target archive is located
-        roms.zipFn = ""             # Stores the full name of the target archive
-        roms.zipFnRoot = ""         # Stores the name of the target archive without extension
-        roms.zipFnExt = ""          # Stores the extension of the target archive
-        roms.extPath = ""           # Stores the extraction target directory
-        roms.outDest = ""           # Stores the final destination of the processed roms
-        roms.romList = {            # Stores a list of all decompressed files in the extraction directory
+    def __init__(rArch, zipFile):
+        rArch.zipFile = zipFile      # Stores the full path to the target archive
+        rArch.zipPath = ""           # Stores the directory in which the target archive is located
+        rArch.zipFn = ""             # Stores the full name of the target archive
+        rArch.zipFnRoot = ""         # Stores the name of the target archive without extension
+        rArch.zipFnExt = ""          # Stores the extension of the target archive
+        rArch.extPath = ""           # Stores the extraction target directory
+        rArch.outDest = ""           # Stores the final destination of the processed roms
+        rArch.romList = {            # Stores a list of all decompressed files in the extraction directory
                 "unSrted": [], "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
-        roms.colTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] }           # Stores scraped tags
-        roms.totals = {"USA": 0, "Japan": 0, "Europe": 0, "World": 0, "UnKwn": 0, "Total": 0, "Tags": { } } # Stores totals
-        
+        rArch.colTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] }           # Stores scraped tags
+        rArch.totals = {"USA": 0, "Japan": 0, "Europe": 0, "World": 0, "UnKwn": 0, "Total": 0, "Tags": { } } # Stores totals
+        rArch.romFiles = []          # Create a list to store all instances of the romFile subclass
+    
+    
     # Iterates through all of the files in the extraction directory and attempts to match them to a region
-    def processRoms(roms, extTo, outDest, ptend, sXtract):
+    def processRoms(rArch, extTo, outDest, ptend, sXtract):
         # Gather information about target archive
-        roms.inspect(roms.zipFile, extTo, outDest)
-        #m.dv(locals(), "roms.zipFile", "roms.extPath", "roms.zipPath", "roms.zipFn", "roms.zipFnRoot", "roms.zipFnExt", "roms.outDest" )
+        rArch.inspect(rArch.zipFile, extTo, outDest)
+        #m.dv(locals(), "rArch.zipFile", "rArch.extPath", "rArch.zipPath", "rArch.zipFn", "rArch.zipFnRoot", "rArch.zipFnExt", "rArch.outDest" )
         # Decompress the target archive
-        roms.unzip(roms.extPath, roms.zipPath, roms.zipFile, ptend, sXtract)      # Unzips target file
-        # Get a list of all files decompressed into target directory
-        roms.getFiles()                                                 # Gathers and saves a list of all files in extraction target directory
+        rArch.unzip(rArch.extPath, rArch.zipPath, rArch.zipFile, ptend, sXtract)    # Unzips target file
+        # Get a list of all files decompressed into target directory    
+        rArch.getFiles()                                                            # Gathers and saves a list of all files in extraction target directory
         m.st("Sorting Roms...")
-        for romFile in roms.romList["unSrted"]:                         # For each of the Rom Files in the rom list class variable
-            if romFile.endswith(".zip") and '[BIOS]' not in romFile:    # If the file is a archive, and is not a bios
-                m.wk(romFile)                                           # Prints message with name of rom
-                romTags = roms.scrape(romFile)                          # Calls method to scrape rom name for tags to process
-                roms.collectTags(romTags)
-                #m.dv(locals(), "romTags", "roms.colTags")
-                srtRegion = str(roms.sort(romFile, romTags))            # Calls method to determine the sort location of the rom
-                m.dv(locals(), "srtRegion")
-                if srtRegion == "UnKwn":
+        for rom in rArch.romList["unSrted"]:                                        # For each of the Rom Files in the rom list class variable
+            if rom.endswith(".zip") and '[BIOS]' not in rom:                        # If the file is a archive, and is not a bios
+                m.wk(rom)                                                           # Prints message with name of rom
+                # Initialize a new instance of a romFile object
+                romObj = romFile(rom, rArch.zipFn, rArch.zipPath)
+                # Rename it to match the file name of the working rom
+                romObj.__name = romObj.romFiles.index(rom)
+                m.dv(locals(), "romObj")
+                # Scrape tags from the working rom
+                romObj.tags = romObj.scrape()                                   # Calls method to scrape rom name for tags to process
+                print(romObj.tags)
+                # Collects the tags into the archive
+                rArch.collectTags(romObj.tags)
+                #m.dv(locals(), "romTags", "rArch.colTags")
+                # Attempts to sort the rom into one of the master sort regions
+                romObj.srtRegion = str(romObj.sort(rom, romObj.tags))         # Calls method to determine the sort location of the rom
+                if romObj.srtRegion == "UnKwn":
                     # Add rom to the unknown list
-                    roms.romList[srtRegion].append(romFile)
-                    m.wn("Unable to match", romFile)                       # Prints debug message with name of skipped file
-                    m.lf(romFile)                                          # Prints debug substatement with location of skipped file
+                    rArch.romList[romObj.srtRegion].append(rom)
+                    m.wn("Unable to match", rom)                       # Prints debug message with name of skipped file
+                    m.lf(rom)                                          # Prints debug substatement with location of skipped file
                 else:
-                    roms.romList[srtRegion].append(romFile)
+                    rArch.romList[romObj.srtRegion].append(rom)
                 continue
             else:
                 continue
         # get totals of roms and tags after processing
-        roms.totals = roms.cntRoms(roms.romList)                         # Count the total processed roms
-        m.dv(locals(), "romFile")
-        roms.totals["Tags"] = roms.cntTags(roms.colTags)                # Count the collected tags
-        m.ds("rom totals is: ", str(roms.totals))
-        return 0
+        rArch.totals = rArch.cntRoms(rArch.romList)                         # Count the total processed roms
+        m.dv(locals(), "rom")
+        rArch.totals["Tags"] = rArch.cntTags(rArch.colTags)                # Count the collected tags
+        m.ds("rom totals is: ", str(rArch.totals))
+        return romObj.move
     
     # Gathers information about the target archive
-    def inspect(roms, zipFile, extTo, outDest):
-        roms.zipPath, roms.zipFn = os.path.split(zipFile)             # Get the path and full name from the zip passed to script
-        roms.zipFnRoot, roms.zipFnExt = os.path.splitext(roms.zipFn)  # Get the base file name and extension from file name   
-        roms.extPath = os.path.join(extTo, roms.zipFnRoot)            # Gets the target directory for file extraction from zip name
+    def inspect(rArch, zipFile, extTo, outDest):
+        rArch.zipPath, rArch.zipFn = os.path.split(zipFile)             # Get the path and full name from the zip passed to script
+        rArch.zipFnRoot, rArch.zipFnExt = os.path.splitext(rArch.zipFn)  # Get the base file name and extension from file name   
+        rArch.extPath = os.path.join(extTo, rArch.zipFnRoot)            # Gets the target directory for file extraction from zip name
         if not outDest:
             m.de("outdest set")
-            roms.outDest = roms.zipPath                               # Sets the final destination to be the same as the target archive
+            rArch.outDest = rArch.zipPath                               # Sets the final destination to be the same as the target archive
         else:
-            roms.outDest = outDest                                    # Sets the final destination to location given by user
+            rArch.outDest = outDest                                    # Sets the final destination to location given by user
         # Check if the archive has a .zip extension 
-        if ".zip" not in roms.zipFnExt:                               # If the extension is not .zip
+        if ".zip" not in rArch.zipFnExt:                               # If the extension is not .zip
             print("Error: Target File is no a Zip Archive")
             print("       Check that you've supplied a valid path to a No-Intro zip archive and run the script again")
             print("         Ex: $ neni /home/user/Downloads/archive.zip")
@@ -209,7 +261,7 @@ class romArchive():
             m.de("zipFnExt is .zip else")
             return 0
     
-    def unzip(roms, extPath, zipPath, zipFile, ptend, sXtract):
+    def unzip(rArch, extPath, zipPath, zipFile, ptend, sXtract):
         if not ptend and not sXtract:
             m.dv(locals(), "extPath", "zipPath", "zipFile", "ptend")
             m.st("Checking Extraction Directory...", extPath)
@@ -233,126 +285,28 @@ class romArchive():
             return 0
     
     # Gets a list of all roms in the extraction path to iterate through
-    def getFiles(roms):
+    def getFiles(rArch):
         try:
-            roms.romList["unSrted"] = os.listdir(roms.extPath)
+            rArch.romList["unSrted"] = os.listdir(rArch.extPath)
         except:
             m.er("Unable to Process Extracted Files")
             m.ei("No Such File or Directory")
             m.ex("Error")
             sys.exit(1)
             
-    def collectTags(roms, romTags):
-        for tagGrp in roms.colTags:
+    def collectTags(rArch, romTags):
+        for tagGrp in rArch.colTags:
             for tag in romTags[tagGrp]:
-                roms.colTags[tagGrp].append(tag)
-        
-    # Takes the full file name of the current working file, scrapes it for tags and returns those tags
-    def scrape(roms, romFile): # Scrapes tags from rom file name
-        romTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] }
-        
-        m.sb("Gathering tags...")
-        romTags["unSrted"] = re.findall(r'\((?=[^(]*\))(.*?)\)', romFile)    # Scrape file name for all occurrences of (***) matching only complete (***)
-        for tag in romTags["unSrted"]:                                       # For each of the collected tags
-            tagSplit = tag.split(',')                                  # Split the tags on commas
-            for splitTag in tagSplit:                                  # For each of the individual tags
-                splitTag = splitTag.strip()                            # Strip whitespace
-                if "+" in splitTag:
-                    splitTag = splitTag.split('+')
-                    tagSplit.extend(splitTag)
-                    continue
-                else:
-                    if splitTag in roms.romRegions:                     # If the tag can be found in the regions list
-                        romTags["regionTags"].append(splitTag)          # Add it to the regionTags list
-                    elif splitTag in roms.romLang:                      # If the tag can be found in the Language list
-                        romTags["languageTags"].append(splitTag)        # Add it to the languageTags list
-                    else:                                               # Else if the tag cannot be matched
-                        if re.findall(r'PAL.*', splitTag):              # >>>> NEED TO DO THIS BETTER REGEX
-                            romTags["regionTags"].append("PAL")
-                        else:
-                            romTags["miscTags"].append(splitTag)        # Add it to the miscTags list
-        m.sb("Tags are:", ' '.join(romTags["unSrted"])) 
-        return romTags
-    
-    # Takes a given romFile and its scraped tags and sorts it into one of the sort regions
-    # Returns either the sort region or 1 for unmatched.
-    def sort(roms, romFile, romTags):
-        m.sb("Sorting rom...")
-        # Attempt to match by region  
-        if romTags["regionTags"]:                                            # If regionTags dictionary entry is not empty
-            for tag in romTags["regionTags"]:
-                if "USA" in romTags["regionTags"]:                             # Attempt to bail out early by matching on master sort region
-                    m.ma(romFile, "USA")
-                    return "USA"
-                elif tag == "Japan":
-                    if len(romTags["regionTags"]) == 1:
-                        return "Japan"
-                    elif romTags["regionTags"][1] in romRegion.keys(): 
-                        if len(romTags["languageTags"]) >= 1 and romTags["languageTags"][0] != "Ja":
-                            continue
-                        else:
-                            return "Japan"
-                    else:
-                        return "Japan"
-                elif tag == "Europe":
-                    return "Europe"
-                elif tag == "World":
-                    if len(romTags["regionTags"]) == 1:
-                        if not romTags["languageTags"] or "En" in romTags["languageTags"]:
-                            m.ma(romFile, "USA")
-                            return "USA"
-                        else:
-                            return "World"
-                    else:
-                        if "PAL" in romTags["regionTags"]:
-                            return "Europe"
-                        else:
-                            return "USA"
-                # We werent able to bail out
-                if tag in roms.romRegion["USA"]:
-                    if not romTags["languageTags"] or "En" in romTags["languageTags"]:
-                        return "USA"
-                    else:
-                        return "World"
-                elif tag in roms.romRegion["Japan"]:
-                        return "Japan"
-                elif tag in roms.romRegion["Europe"]:
-                    return "Europe"
-                elif tag in roms.romRegion["World"]:
-                    return "World"
-                elif tag in roms.romRegion["EurWor"]:
-                    if "En" in romTags["languageTags"]:
-                        return "Europe"
-                    else:
-                        return "World"
-                else:
-                    continue
-        # If no region tags, but has language tags
-        elif romTags["languageTags"]:
-            if "En" in romTags["languageTags"]:
-                # Regionless rom with En language
-                #m.sb("Regionless rom with En Tags"
-                return "USA"
-            elif "Ja" in romTags["languageTags"]:
-                # Regionless rom with Ja language
-                return "Japan"
-            else:
-                # Regionless rom with any other language
-                return "World"
-        else:
-            # If no region tags or language tags
-            return "UnKwn"
-        # Any other case return unknown
-        return "UnKwn"
-        
+                rArch.colTags[tagGrp].append(tag)
+     
     # Counts all the roms in the rom list
-    def cntRoms(roms, romList):
+    def cntRoms(rArch, romList):
         auditRomsCnted = []                                         # Create a temporary list to hold the rom counts
         # Get a count of roms on each of the sort lists
         for cntRomGrp in romList.keys():                       # For each of the sort groups in the rom list
             if cntRomGrp != "unSrted":                              # Don't count the unsorted rom list
                 auditRomsCnted.append(cntRomGrp)                    # Add the sort group label to the list
-                auditRomsCnted.append(len(roms.romList[cntRomGrp]))  # count the items and add it after the label
+                auditRomsCnted.append(len(rArch.romList[cntRomGrp]))  # count the items and add it after the label
         # Create a dictionary to save the counts
         auditRomsTotals = { grp:ttl for (grp,ttl) in zip(auditRomsCnted[::2], auditRomsCnted[1::2])} # the first and every other as keys, second and every other as values   
         auditRomsTotals["Total"] = sum(auditRomsCnted[1::2])        # Save the total number of roms
@@ -361,7 +315,7 @@ class romArchive():
     
     # Takes a dictionary of collected tags and returns a dictionary with sorted tags, totals 
     # input format: colTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] } 
-    def cntTags(roms, colTags):
+    def cntTags(rArch, colTags):
         #m.dv(locals(), "colTags")
         # Format: { Total: AllTags, "regionTags": { "group": AllGroup, tagTotals: [ [sorted list of tags] [totals] ]
         #cntedTags = { "Total": 0, "regionTags": { "regionTags": 0, "tagTotals": [ [], [] ] },
@@ -389,6 +343,126 @@ class romArchive():
             else: 
                 continue
         return cntedTags
+
+# Creates objects for each rom in the target archive
+class romFile(): 
+    romFiles = []
+    def __init__(romFile, fileName, pArchive, loc):
+        m.dv(locals(), "fileName", "pArchive", "loc")
+        romFile.name = fileName
+        romFile.parent = pArchive
+        romFile.location = loc
+        romFile.region = []
+        romFile.language = []
+        romFile.infoTags = []
+        romFile.srtRegion = ""
+        romFile.tags  = { }
+        romFile.romFiles.append(fileName)
+    
+    # Takes the full file name of the current working file, scrapes it for tags and returns those tags
+    def scrape(romFile):
+        m.sb("Gathering tags...")
+        romFile.tags = re.findall(r'\((?=[^(]*\))(.*?)\)', romFile.name)            # Scrape file name for all occurrences of (***) matching only complete (***)
+        for tag in romFile.tags:                                                    # For each of the collected tags
+            tagSplit = tag.split(',')                                               # Split the tags on commas
+            for splitTag in tagSplit:                                               # For each of the individual tags
+                splitTag = splitTag.strip()                                         # Strip whitespace
+                if "+" in splitTag:
+                    splitTag = splitTag.split('+')
+                    tagSplit.extend(splitTag)
+                    continue
+                else:
+                    if splitTag in rArch.romRegions:                    # If the tag can be found in the regions list
+                        romFile.region.append(splitTag)           # Add it to the regionTags list
+                    elif splitTag in rArch.romLang:                     # If the tag can be found in the Language list
+                        romFile.language.append(splitTag)         # Add it to the languageTags list
+                    else:                                               # Else if the tag cannot be matched
+                        if re.findall(r'PAL.*', splitTag):              # >>>> NEED TO DO THIS BETTER REGEX
+                            romFile.region.append("PAL")
+                        else:
+                            romFile.infoTags.append(splitTag)     # Add it to the miscTags list
+        romTags = { "unSrted": romFile.tags, "regionTags": romFile.region, 
+                               "languageTags": romFile.language, "miscTags": romFile.infoTags }
+        m.sb("Tags are:", ' '.join(romTags["unSrted"])) 
+        return romTags
+        
+    # Takes a given romFile and its scraped tags and sorts it into one of the sort regions
+    # Returns either the sort region or 1 for unmatched.
+    def sort(romFile, rom, romTags):
+        m.sb("Sorting rom...")
+        # Attempt to match by region  
+        if romTags["regionTags"]:                                            # If regionTags dictionary entry is not empty
+            for tag in romTags["regionTags"]:
+                if "USA" in romTags["regionTags"]:                             # Attempt to bail out early by matching on master sort region
+                    m.ma(rom, "USA")
+                    return "USA"
+                elif tag == "Japan":
+                    if len(romTags["regionTags"]) == 1:
+                        return "Japan"
+                    elif romTags["regionTags"][1] in romRegion.keys(): 
+                        if len(romTags["languageTags"]) >= 1 and romTags["languageTags"][0] != "Ja":
+                            continue
+                        else:
+                            return "Japan"
+                    else:
+                        return "Japan"
+                elif tag == "Europe":
+                    return "Europe"
+                elif tag == "World":
+                    if len(romTags["regionTags"]) == 1:
+                        if not romTags["languageTags"] or "En" in romTags["languageTags"]:
+                            m.ma(rom, "USA")
+                            return "USA"
+                        else:
+                            return "World"
+                    else:
+                        if "PAL" in romTags["regionTags"]:
+                            return "Europe"
+                        else:
+                            return "USA"
+                # We werent able to bail out
+                if tag in rArch.romRegion["USA"]:
+                    if not romTags["languageTags"] or "En" in romTags["languageTags"]:
+                        return "USA"
+                    else:
+                        return "World"
+                elif tag in rArch.romRegion["Japan"]:
+                        return "Japan"
+                elif tag in rArch.romRegion["Europe"]:
+                    return "Europe"
+                elif tag in rArch.romRegion["World"]:
+                    return "World"
+                elif tag in rArch.romRegion["EurWor"]:
+                    if "En" in romTags["languageTags"]:
+                        return "Europe"
+                    else:
+                        return "World"
+                else:
+                    continue
+        # If no region tags, but has language tags
+        elif romTags["languageTags"]:
+            if "En" in romTags["languageTags"]:
+                # Regionless rom with En language
+                #m.sb("Regionless rom with En Tags"
+                return "USA"
+            elif "Ja" in romTags["languageTags"]:
+                # Regionless rom with Ja language
+                return "Japan"
+            else:
+                # Regionless rom with any other language
+                return "World"
+        else:
+            # If no region tags or language tags
+            return "UnKwn"
+        # Any other case return unknown
+        return "UnKwn"
+        
+    # Moves Roms to sort folders
+    def move(romFile, extPath, srtRomDest, srtFolder, homeRgn, moveRomRom):            
+        m.dv(locals(), "extPath", "srtRomDest", "srtFolder", "homeRgn", "moveRomRom")
+        shutil.move(extPath + "/" + moveRomRom,  srtRomDest + moveRomRom)
+        m.mv(moveRomRom, srtFolder)
+        return 0
 
 def auditLog(outDest, zipFile, romList, romTotals, relVers, noAudit):
     m.dv(locals(), "outDest", "zipFile", "romTotals", "relVers", "noAudit")
@@ -536,7 +610,7 @@ class msg():
     # Forms messages to notify user of current working file
     # m.wk(rom_file_name)
     def working(msg, wkRom):
-        msg.say("NeNI: Working on Rom", msg.c.cb+ wkRom, msg.c.o)
+        msg.say("NeNI:   Working on Rom", msg.c.cb+ wkRom, msg.c.o)
     # Shorthand alias for method
     wk = working
         
@@ -585,11 +659,11 @@ def mainRoutine():
     m = msg(flags.debug, flags.verbose)
     m.dv(locals(), "flags")
     # Performs sanity checks on target file, initializes target archive object
-    roms = romArchive( checkZip(flags) )
+    roms = rArch( checkZip(flags) )
     # Processes roms based on region and/or language and sorts them into groups
-    roms.processRoms(flags.extTo, flags.outDest, flags.pretend, flags.skip_extraction)
+    mvFile = roms.processRoms(flags.extTo, flags.outDest, flags.pretend, flags.skip_extraction)
      # Moves rom files to sort folders
-    moveRom(roms.extPath, roms.outDest, roms.zipPath, roms.romList, flags.homeRgn, flags.pretend)
+    moveRom(mvFile, roms.extPath, roms.outDest, roms.zipPath, roms.romList, flags.homeRgn, flags.pretend)
     # Writes audit log to file
     auditLog(roms.outDest, roms.zipFile, roms.romList, roms.totals, flags.relVers, flags.audit)
     m.ex("Successful Completion")
