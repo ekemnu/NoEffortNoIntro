@@ -61,7 +61,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.16')
+    parser.add_argument('--version', action='version', version='NeNI 0.16')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -232,44 +232,40 @@ class romArchive():
         m.st("Processing Roms...")
         # For each of the unsorted rom list
         for rom in ra.romList["unSrted"]:
-            # If the file is a archive, and is not a bios
-            if '[BIOS]' not in rom.name:
-                m.wk(rom.name)
-                # Initialize a new instance of a romFile object
-                # Send name of rom, name of parent archive, where it was extracted to
-                romObj = romFile(rom.name, ra.zipPath, ra.extPath)
-                m.dv(locals(), "romObj")
-                #m.dv(locals(), "romFiles")
-                # Scrape tags from the working rom
-                # Collects the tags into the archive
-                ra.collectTags(romObj.scrape())
-                # Attempts to sort the rom into one of the master sort regions
-                romObj.sort()
-                # Stores the rom to the archive by sorted region
-                if romObj.srtRegion == "UnKwn":
-                    # Prints warning message with name of unmatched file
-                    m.wn("Unable to match", romObj.name)
-                    # Add rom object to the unknown list
-                    ra.romList[romObj.srtRegion].append(romObj)
-                    # Prints debug substatement with location of skipped file
-                    m.lf(romObj.name)
-                    # Set the sort location to be the root directory
+            m.wk(rom.name)
+            # Initialize a new instance of a romFile object
+            # Send name of rom, name of parent archive, where it was extracted to
+            romObj = romFile(rom.name, ra.zipPath, ra.extPath)
+            m.dv(locals(), "romObj")
+            #m.dv(locals(), "romFiles")
+            # Scrape tags from the working rom
+            # Collects the tags into the archive
+            ra.collectTags(romObj.scrape())
+            # Attempts to sort the rom into one of the master sort regions
+            romObj.sort()
+            # Stores the rom to the archive by sorted region
+            if romObj.srtRegion == "UnKwn":
+                # Prints warning message with name of unmatched file
+                m.wn("Unable to match", romObj.name)
+                # Add rom object to the unknown list
+                ra.romList[romObj.srtRegion].append(romObj)
+                # Prints debug substatement with location of skipped file
+                m.lf(romObj.name)
+                # Set the sort location to be the root directory
+                romObj.srtLocation = ra.extPath
+            else:
+                # Prints message with name of matched file and sort region
+                m.ma(romObj.name, romObj.srtRegion)
+                # Add rom object to the list by sort region
+                ra.romList[romObj.srtRegion].append(romObj)
+                # Handle user selectable region flag homeRgn
+                if ra.homeRgn == romObj.srtRegion:
+                    # if sort region is selected region leave in root
                     romObj.srtLocation = ra.extPath
                 else:
-                    # Prints message with name of matched file and sort region
-                    m.ma(romObj.name, romObj.srtRegion)
-                    # Add rom object to the list by sort region
-                    ra.romList[romObj.srtRegion].append(romObj)
-                    # Handle user selectable region flag homeRgn
-                    if ra.homeRgn == romObj.srtRegion:
-                        # if sort region is selected region leave in root
-                        romObj.srtLocation = ra.extPath
-                    else:
-                        # Set the rom's final location to be a region sort folder
-                        romObj.srtLocation = ra.extPath.joinpath(romObj.srtRegion)
-                continue
-            else:
-                continue
+                    # Set the rom's final location to be a region sort folder
+                    romObj.srtLocation = ra.extPath.joinpath(romObj.srtRegion)
+            continue
         return 0
 
     ##### Takes a set of tags and appends to a complete set of tags from the current working archive
@@ -525,31 +521,50 @@ class romFile():
         rf.srtLanguage = ""                 # Stores sort language determined by the sort method
         rf.tags  = { }                      # Stores a list of all the tags from the scrape method
     
-    # Takes the full file name of the current working file, scrapes it for tags and returns those tags
+    ##### Takes the full file name of the current working file, scrapes it for tags and returns those tags
     def scrape(rf):
         m.sb("Gathering tags...")
-        rf.tags = re.findall(r'\((?=[^(]*\))(.*?)\)', rf.name)            # Scrape file name for all occurrences of (***) matching only complete (***)
-        for tag in rf.tags:                                               # For each of the collected tags
-            tagSplit = tag.split(',')                                     # Split the tags on commas
-            for splitTag in tagSplit:                                     # For each of the individual tags
-                splitTag = splitTag.strip()                               # Strip whitespace
+        # Scrape file name for all occurrences of (***) matching only complete (***)
+        rf.tags = re.findall(r'\((?=[^(]*\))(.*?)\)', rf.name)
+        # Iterate through the collected tags to sort them into categories
+        for tag in rf.tags:
+            # Split the tags on commas
+            tagSplit = tag.split(',')
+            # Iterate through each of the individual tags
+            for splitTag in tagSplit:
+                # Strip whitespace
+                splitTag = splitTag.strip()
+                # If the tag has a + in it, split it again
                 if "+" in splitTag:
+                    # Split tag on +
                     splitTag = splitTag.split('+')
+                    # Place the tags at the end of the last to process
                     tagSplit.extend(splitTag)
+                    # Continue to the next tag in the list
                     continue
+                # Sort the tag into category 
                 else:
-                    if splitTag in rf.romRegions:    # If the tag can be found in the regions list
-                        rf.region.append(splitTag)           # Add it to the regionTags list
-                    elif splitTag in rf.romLang:                     # If the tag can be found in the Language list
-                        rf.language.append(splitTag)         # Add it to the languageTags list
-                    else:                                               # Else if the tag cannot be matched
+                    # If the tag can be found in the regions list
+                    if splitTag in rf.romRegions:
+                        # Add it to the regionTags list
+                        rf.region.append(splitTag)
+                     # If the tag can be found in the Language list
+                    elif splitTag in rf.romLang:
+                        # Add it to the languageTags list
+                        rf.language.append(splitTag)
+                    # Else if the tag cannot be matched
+                    else:
                         if re.findall(r'PAL.*', splitTag):              # >>>> NEED TO DO THIS BETTER REGEX
                             rf.region.append("PAL")
+                        # Add the tag to the info/misc tags list
                         else:
-                            rf.infoTags.append(splitTag)     # Add it to the miscTags list
+                            rf.infoTags.append(splitTag)
+        # Save the scraped tags into a dictionary to pass to the main archive for logging
         rf.tags = { "unSrted": rf.tags, "regionTags": rf.region, 
                                "languageTags": rf.language, "miscTags": rf.infoTags }
+        # Report the tags found to the user
         m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
+        # Return the tags to the archive object
         return rf.tags
     
     # Takes a given romFile and its scraped tags and sorts it into one of the sort regions
