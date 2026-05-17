@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2024
-#####   0.16
+#####   0.17
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -22,7 +22,8 @@
 #####       0.14 Handle multiple archives, create object instance for each rom from each archive
 #####       0.15 Better error handling, transitioned from os to pathlib for better path handling
 #####       0.16 Bug fixes, and improved sorting logic
-#####       0.17 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
+#####       0.17 Improved exception, file, audit handling, bug fixes
+#####       0.18 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
@@ -62,7 +63,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.16')
+    parser.add_argument('--version', action='version', version='NenI 0.17')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -154,27 +155,25 @@ class romArchive():
                 m.de("outdest not set")
                 ra.outDest = ra.zipPath
         
-    # Returns a list of functions to iterate through and execute
-    def __iter__(ra):
-        return iter([
+    # Processes the current target archive when called
+    def process(ra):
         # Decompress the target archive
-        ra.unzip(),
+        ra.unzip()
         # Gather a list of all files extracted from the target archive
-        ra.getFiles(),
+        ra.getFiles()
         # Gather information about the extracted files
-        ra.processRoms(),
+        ra.processRoms()
         # Total the files and scraped tags in each category
-        ra.cntRoms(),
-        ra.cntTags(),
+        ra.cntRoms()
+        ra.cntTags()
         # Move the files to the sort regions
-        ra.moveRoms(),
+        ra.moveRoms()
         # Moves the processed archive to output destination
-        ra.move(),
+        ra.move()
         # Writes the audit log documenting changes made to final destination
-        ra.auditLog(),
+        ra.auditLog()
         # Mark the archive as fully processed
         ra.markProcessed()
-    ])
     
     ##### Unzips the target archive
     def unzip(ra):
@@ -189,9 +188,9 @@ class romArchive():
                     try: 
                         # Decompress the archive to the extraction destination
                         shutil.unpack_archive(ra.zipFile, ra.extPath, "zip")
-                    except:
+                    except Exception as e:
                         # If the decompress returned an error
-                        m.er("Archive Decompression Failed")
+                        m.er("Archive Decompression Failed", str(e))
                         m.ex("Error")
                         sys.exit(1)
                     else:
@@ -293,9 +292,9 @@ class romArchive():
             try:
                 # Attempt to create the directory
                 outLocation.mkdir()
-            except:
+            except Exception as e:
                 # Exit if error
-                m.er("Unable to create sort folder at extraction path")
+                m.er("Unable to create sort folder at extraction path", srt(e))
                 m.ex("error")
                 sys.exit(1)
             else:
@@ -430,66 +429,65 @@ class romArchive():
             # Set the location to write the audit file
             # If we're pretending, set location to be the same as target file
             if ra.pretend:
-                auditFPath = ra.zipPath.joinpath(auditFn)
+                auditFPath = ra.zipPath.joinpath(ra.auditFn)
             # If we're not pretending, set it to the output destination
             else:
-                auditFPath = ra.outDest.joinpath(auditFn)
+                auditFPath = ra.outDest.joinpath(ra.auditFn)
             # Check if file already exists
             if auditFPath.is_file():
                 # Remove file if it already exists
                 auditFPath.unlink()
             # Open the file for writing
-            auditFile = open(auditFPath, "a")
+            with open(auditFPath, "a") as auditFile:
 
-            m.st("Saving Audit Log to", str(auditFPath) + "...")
-            # Write the audit log header information
-            auditFile.write("No Effort No Intro" + '\n')
-            auditFile.write("   Audit Log" + '\n\n')
-            auditFile.write("Created on:    " + exeTime + '\n')
-            auditFile.write("Processed:     " + str(ra.zipFile) + '\n')
-            auditFile.write("Processed to:  " + str(ra.outDest) + '\n')
-            auditFile.write("Total Files:   " + str(ra.totals["Total"]) + '\n\n')
+                m.st("Saving Audit Log to", str(auditFPath) + "...")
+                # Write the audit log header information
+                auditFile.write("No Effort No Intro" + '\n')
+                auditFile.write("   Audit Log" + '\n\n')
+                auditFile.write("Created on:    " + exeTime + '\n')
+                auditFile.write("Processed:     " + str(ra.zipFile) + '\n')
+                auditFile.write("Processed to:  " + str(ra.outDest) + '\n')
+                auditFile.write("Total Files:   " + str(ra.totals["Total"]) + '\n\n')
 
-            # Process the log buffer and write it to the audit file
-            # Writes the collected tags and totals to file:
-            # romTotals > Tags > regionTags > tagTotals  
-            #rom totals is:  'Tags': {'Total': 6, 
-            #'regionTags': {'regionTags': 2, 'tagTotals': [['Japan', 'USA'], [1, 1]]}, 'languageTags': {'languageTags': 5, 'tagTotals': [['De', 'En', 'Fr', 'Ja'], [1, 1, 1, 1]]}, 'miscTags': {'miscTags': 3, 'tagTotals': [['Beta', 'proto', 'test'], [1, 1, 1]]}}}
+                # Process the log buffer and write it to the audit file
+                # Writes the collected tags and totals to file:
+                # romTotals > Tags > regionTags > tagTotals  
+                #rom totals is:  'Tags': {'Total': 6, 
+                #'regionTags': {'regionTags': 2, 'tagTotals': [['Japan', 'USA'], [1, 1]]}, 'languageTags': {'languageTags': 5, 'tagTotals': [['De', 'En', 'Fr', 'Ja'], [1, 1, 1, 1]]}, 'miscTags': {'miscTags': 3, 'tagTotals': [['Beta', 'proto', 'test'], [1, 1, 1]]}}}
 
-            # Writes the section header to the file
-            auditFile.write("### " + str(ra.totals["Tags"]["Total"]) + " Tags Were Scraped From File Names  ###" + '\n')
-            # Iterates through each of the tag groups in the romTotals tag dictionary
-            for tagGrp in list(ra.totals["Tags"])[1:]:
-                # Writes the headers with the total for each of the groups
-                if tagGrp == "regionTags":
-                    auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Region Tags" + '\n')
-                elif tagGrp == "languageTags":
-                    auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Language Tags" + '\n')
-                elif tagGrp == "miscTags":
-                    auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Miscellaneous Tags" + '\n')
-                # For each of the tags in the respective tag groups dictionary, skipping the first key
-                for tag in list(ra.totals["Tags"][tagGrp])[1:]:
-                    # Write the count for each tag to the file, right justified to 6 places to the audit file line
-                    auditFile.write(str(ra.totals["Tags"][tagGrp][tag]).rjust(6, ' ') + " " + str(tag) + '\n')
-                # Add blank line at end of list for formatting  
-                auditFile.write('\n')
-                continue
-
-            # Writes the results of the rom sort
-            for srtGrp in list(ra.romList.keys())[1:]:
-                if ra.romList[srtGrp]:
-                    if srtGrp == "UnKwn":
-                        auditFile.write("###  " + str(ra.totals[srtGrp]) + " Files Were Unmatched  ###" + '\n')
-                    else:
-                        auditFile.write("###  " + str(ra.totals[srtGrp]) + " Files Matched the " + str(srtGrp) + " Region  ###" + '\n')
-
-                    for logLn in ra.romList[srtGrp]:
-                        auditFile.write(str(logLn.name) + '\n')
-                else:
+                # Writes the section header to the file
+                auditFile.write("### " + str(ra.totals["Tags"]["Total"]) + " Tags Were Scraped From File Names  ###" + '\n')
+                # Iterates through each of the tag groups in the romTotals tag dictionary
+                for tagGrp in list(ra.totals["Tags"])[1:]:
+                    # Writes the headers with the total for each of the groups
+                    if tagGrp == "regionTags":
+                        auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Region Tags" + '\n')
+                    elif tagGrp == "languageTags":
+                        auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Language Tags" + '\n')
+                    elif tagGrp == "miscTags":
+                        auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Miscellaneous Tags" + '\n')
+                    # For each of the tags in the respective tag groups dictionary, skipping the first key
+                    for tag in list(ra.totals["Tags"][tagGrp])[1:]:
+                        # Write the count for each tag to the file, right justified to 6 places to the audit file line
+                        auditFile.write(str(ra.totals["Tags"][tagGrp][tag]).rjust(6, ' ') + " " + str(tag) + '\n')
+                    # Add blank line at end of list for formatting  
                     auditFile.write('\n')
                     continue
-                auditFile.write('\n')
-            auditFile.close()
+
+                # Writes the results of the rom sort
+                for srtGrp in list(ra.romList.keys())[1:]:
+                    if ra.romList[srtGrp]:
+                        if srtGrp == "UnKwn":
+                            auditFile.write("###  " + str(ra.totals[srtGrp]) + " Files Were Unmatched  ###" + '\n')
+                        else:
+                            auditFile.write("###  " + str(ra.totals[srtGrp]) + " Files Matched the " + str(srtGrp) + " Region  ###" + '\n')
+
+                        for logLn in ra.romList[srtGrp]:
+                            auditFile.write(str(logLn.name) + '\n')
+                    else:
+                        auditFile.write('\n')
+                        continue
+                    auditFile.write('\n')
         else:
             m.n("Skipping Audit File Write as Requested...")
         
@@ -543,7 +541,7 @@ class romFile():
                     elif splitTag in rf.romLang:                     # If the tag can be found in the Language list
                         rf.language.append(splitTag)         # Add it to the languageTags list
                     else:                                               # Else if the tag cannot be matched
-                        if re.findall(r'PAL.*', splitTag):              # >>>> NEED TO DO THIS BETTER REGEX
+                        if re.findall(r'PAL.*', splitTag):              # >>>> TODO: NEED TO DO THIS BETTER REGEX
                             rf.region.append("PAL")
                         else:
                             rf.infoTags.append(splitTag)     # Add it to the miscTags list
@@ -559,7 +557,7 @@ class romFile():
         # Attempt to match by region  
         if rf.tags["regionTags"]:                                    # If regionTags dictionary entry is not empty
             for tag in rf.tags["regionTags"]:
-                m.dv(locals(), "regionTags")
+                #m.dv(locals(), "regionTags")
                 if "USA" in rf.tags["regionTags"]:                   # Attempt to bail out early by matching on master sort region
                     return "USA"
                 elif tag == "Japan":
@@ -578,6 +576,8 @@ class romFile():
                     if len(rf.tags["regionTags"]) == 1:
                         if not rf.tags["languageTags"] or "En" in rf.tags["languageTags"]:
                             return "USA"
+                        elif "Ja" in rf.tags["languageTags"]:
+                            return "Japan"
                         else:
                             return "World"
                     else:
@@ -626,8 +626,8 @@ class romFile():
         try:
             rf.path.rename(rf.srtLocation.joinpath(rf.name))
         # Error if unable to move
-        except:
-            m.er("Unable to move", rf.name, "to sort location", rf.srtLocation)
+        except Exception as e:
+            m.er("Unable to move", rf.name, "to sort location", rf.srtLocation, str(e))
             m.ex("Error")
             sys.exit(1)
         else:
@@ -787,10 +787,11 @@ def mainRoutine():
             flags.noAudit
         )
         # Processes the archive, extracting it, processing the files, and moving it to the final location
-        [ processStep for processStep in archive ]
+        archive.process()
     # Exit the script after successful processing of all archives and files
     m.ex("Successful Completion")
     sys.exit(0)
 	
 # Calls the main routine on script startup
-mainRoutine()               # Script entry point; execution begins here
+if __name__ == '__main__':
+    mainRoutine()               # Script entry point; execution begins here
