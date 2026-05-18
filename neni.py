@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
-#####	2024
-#####   0.17
+#####	2026
+#####   0.18
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -23,7 +23,8 @@
 #####       0.15 Better error handling, transitioned from os to pathlib for better path handling
 #####       0.16 Bug fixes, and improved sorting logic
 #####       0.17 Improved exception, file, audit handling, bug fixes
-#####       0.18 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
+#####       0.18 Further improvements to tag scraping logic
+#####       0.19 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
@@ -63,7 +64,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.17')
+    parser.add_argument('--version', action='version', version='NenI 0.18')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -526,6 +527,32 @@ class romFile():
     # Takes the full file name of the current working file, scrapes it for tags and returns those tags
     def scrape(rf):
         m.sb("Gathering tags...")
+        rawTags = re.findall(r'\((?=[^(]*\))(.*?)\)', rf.name)          # Scrape file name for all occurrences of (***)
+
+        if rawTags:                                                     # If the file has tags
+            for tag in rawTags:                                         # For each of the collected tags
+                for splitTag in re.split(r'[,+]', tag):                 # For each individual tag split on , and +
+                    splitTag = splitTag.strip()                         # Strip whitespace
+                    # Classify each tag
+                    if splitTag in rf.romRegions:                       # If the tag can be found in the regions list
+                        rf.region.append(splitTag)                      # Add it to the regionTags list
+                    elif splitTag in rf.romLang:                        # If the tag matches the format of a language tag
+                        rf.language.append(splitTag)                    # Add it to the languageTags list
+                    elif splitTag.startswith("PAL"):                    # If the Tag is a PAL variant
+                        rf.region.append("PAL")                         # Add it to the regionTags list
+                    else:
+                        rf.infoTags.append(splitTag)                    # Add it to the miscTags list
+        
+        rf.tags = { "unSrted": rawTags, 
+                    "regionTags": rf.region, 
+                    "languageTags": rf.language,
+                    "miscTags": rf.infoTags }
+        
+        m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
+        return rf.tags
+        
+    def scrapeOLD(rf):
+        m.sb("Gathering tags...")
         rf.tags = re.findall(r'\((?=[^(]*\))(.*?)\)', rf.name)            # Scrape file name for all occurrences of (***) matching only complete (***)
         for tag in rf.tags:                                               # For each of the collected tags
             tagSplit = tag.split(',')                                     # Split the tags on commas
@@ -549,6 +576,7 @@ class romFile():
                                "languageTags": rf.language, "miscTags": rf.infoTags }
         m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
         return rf.tags
+  
     
     # Takes a given romFile and its scraped tags and sorts it into one of the sort regions
     # Returns either the sort region or 1 for unmatched.
