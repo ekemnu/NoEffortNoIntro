@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.19
+#####   0.20
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -25,7 +25,8 @@
 #####       0.17 Improved exception, file, audit handling, bug fixes
 #####       0.18 Further improvements to tag scraping logic
 #####       0.19 Rewrote Sort logic
-#####       0.20 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
+#####       0.20 Improved Audit Log handling
+#####       0.23 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
@@ -65,7 +66,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.19')
+    parser.add_argument('--version', action='version', version='NenI 0.20')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -434,7 +435,7 @@ class romArchive():
                 auditFPath = ra.zipPath.joinpath(ra.auditFn)
             # If we're not pretending, set it to the output destination
             else:
-                auditFPath = ra.outDest.joinpath(ra.auditFn)
+                auditFPath = ra.outDest.joinpath(ra.zipFnRoot, ra.auditFn)
             # Check if file already exists
             if auditFPath.is_file():
                 # Remove file if it already exists
@@ -444,12 +445,12 @@ class romArchive():
 
                 m.st("Saving Audit Log to", str(auditFPath) + "...")
                 # Write the audit log header information
-                auditFile.write("No Effort No Intro" + '\n')
-                auditFile.write("   Audit Log" + '\n\n')
-                auditFile.write("Created on:    " + exeTime + '\n')
-                auditFile.write("Processed:     " + str(ra.zipFile) + '\n')
-                auditFile.write("Processed to:  " + str(ra.outDest) + '\n')
-                auditFile.write("Total Files:   " + str(ra.totals["Total"]) + '\n\n')
+                auditFile.write(f"No Effort No Intro\n")
+                auditFile.write(f"   Audit Log\n\n")
+                auditFile.write(f"Created on:    {exeTime}\n")
+                auditFile.write(f"Processed:     {ra.zipFile}\n")
+                auditFile.write(f"Processed to:  {ra.outDest}\n")
+                auditFile.write(f"Total Files:   {ra.totals["Total"]}\n\n")
 
                 # Process the log buffer and write it to the audit file
                 # Writes the collected tags and totals to file:
@@ -458,7 +459,7 @@ class romArchive():
                 #'regionTags': {'regionTags': 2, 'tagTotals': [['Japan', 'USA'], [1, 1]]}, 'languageTags': {'languageTags': 5, 'tagTotals': [['De', 'En', 'Fr', 'Ja'], [1, 1, 1, 1]]}, 'miscTags': {'miscTags': 3, 'tagTotals': [['Beta', 'proto', 'test'], [1, 1, 1]]}}}
 
                 # Writes the section header to the file
-                auditFile.write("### " + str(ra.totals["Tags"]["Total"]) + " Tags Were Scraped From File Names  ###" + '\n')
+                auditFile.write(f"### {ra.totals["Tags"]["Total"]} Tags Were Scraped From File Names  ###\n")
                 # Iterates through each of the tag groups in the romTotals tag dictionary
                 for tagGrp in list(ra.totals["Tags"])[1:]:
                     # Writes the headers with the total for each of the groups
