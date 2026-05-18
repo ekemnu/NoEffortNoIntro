@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.18
+#####   0.19
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -24,7 +24,8 @@
 #####       0.16 Bug fixes, and improved sorting logic
 #####       0.17 Improved exception, file, audit handling, bug fixes
 #####       0.18 Further improvements to tag scraping logic
-#####       0.19 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
+#####       0.19 Rewrote Sort logic
+#####       0.20 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
@@ -64,7 +65,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.18')
+    parser.add_argument('--version', action='version', version='NenI 0.19')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -295,7 +296,7 @@ class romArchive():
                 outLocation.mkdir()
             except Exception as e:
                 # Exit if error
-                m.er("Unable to create sort folder at extraction path", srt(e))
+                m.er("Unable to create sort folder at extraction path", str(e))
                 m.ex("error")
                 sys.exit(1)
             else:
@@ -550,103 +551,62 @@ class romFile():
         
         m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
         return rf.tags
-        
-    def scrapeOLD(rf):
-        m.sb("Gathering tags...")
-        rf.tags = re.findall(r'\((?=[^(]*\))(.*?)\)', rf.name)            # Scrape file name for all occurrences of (***) matching only complete (***)
-        for tag in rf.tags:                                               # For each of the collected tags
-            tagSplit = tag.split(',')                                     # Split the tags on commas
-            for splitTag in tagSplit:                                     # For each of the individual tags
-                splitTag = splitTag.strip()                               # Strip whitespace
-                if "+" in splitTag:
-                    splitTag = splitTag.split('+')
-                    tagSplit.extend(splitTag)
-                    continue
-                else:
-                    if splitTag in rf.romRegions:    # If the tag can be found in the regions list
-                        rf.region.append(splitTag)           # Add it to the regionTags list
-                    elif splitTag in rf.romLang:                     # If the tag can be found in the Language list
-                        rf.language.append(splitTag)         # Add it to the languageTags list
-                    else:                                               # Else if the tag cannot be matched
-                        if re.findall(r'PAL.*', splitTag):              # >>>> TODO: NEED TO DO THIS BETTER REGEX
-                            rf.region.append("PAL")
-                        else:
-                            rf.infoTags.append(splitTag)     # Add it to the miscTags list
-        rf.tags = { "unSrted": rf.tags, "regionTags": rf.region, 
-                               "languageTags": rf.language, "miscTags": rf.infoTags }
-        m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
-        return rf.tags
-  
-    
+
     # Takes a given romFile and its scraped tags and sorts it into one of the sort regions
     # Returns either the sort region or 1 for unmatched.
+    # TODO: Properly handle home region and language priorities
     def sort(rf):
+        regionTags = rf.tags["regionTags"]
+        languageTags = rf.tags["languageTags"]
+        
         m.sb("Sorting rom...")
-        # Attempt to match by region  
-        if rf.tags["regionTags"]:                                    # If regionTags dictionary entry is not empty
-            for tag in rf.tags["regionTags"]:
-                #m.dv(locals(), "regionTags")
-                if "USA" in rf.tags["regionTags"]:                   # Attempt to bail out early by matching on master sort region
-                    return "USA"
-                elif tag == "Japan":
-                    if len(rf.tags["regionTags"]) == 1:
-                        return "Japan"
-                    elif rf.tags["regionTags"][1] in rf.romRegion.keys(): 
-                        if rf.tags["languageTags"][0] != "Ja":
-                            continue
-                        else:
-                            return "Japan"
-                    else:
-                        return "Japan"
-                elif tag == "Europe":
-                    return "Europe"
-                elif tag == "World":
-                    if len(rf.tags["regionTags"]) == 1:
-                        if not rf.tags["languageTags"] or "En" in rf.tags["languageTags"]:
-                            return "USA"
-                        elif "Ja" in rf.tags["languageTags"]:
-                            return "Japan"
-                        else:
-                            return "World"
-                    else:
-                        if "PAL" in rf.tags["regionTags"]:
-                            return "Europe"
-                        else:
-                            return "USA"
-                # We werent able to bail out
-                if tag in rf.romRegion["USA"]:
-                    if not rf.tags["languageTags"] or "En" in rf.tags["languageTags"]:
-                        return "USA"
-                    else:
-                        return "World"
-                elif tag in rf.romRegion["Japan"]:
-                        return "Japan"
-                elif tag in rf.romRegion["Europe"]:
-                    return "Europe"
-                elif tag in rf.romRegion["World"]:
-                    return "World"
-                elif tag in rf.romRegion["EurWor"]:
-                    if "En" in rf.tags["languageTags"]:
-                        return "Europe"
-                    else:
-                        return "World"
-                else:
-                    continue
-        # If no region tags, but has language tags
-        elif rf.tags["languageTags"]:
-            if "En" in rf.tags["languageTags"]:
-                # Regionless rom with En language
-                #m.sb("Regionless rom with En Tags"
+        # Try to match on language if no region tags
+        if not regionTags:
+            if not languageTags:                    # If there are not language tags return unknown
+                return "UnKwn"
+            if "En" in languageTags:                # If there is an english language tag return USA
                 return "USA"
-            elif "Ja" in rf.tags["languageTags"]:
-                # Regionless rom with Ja language
+            elif "Ja" in languageTags:              # If there is a japanese language tag return Japan
                 return "Japan"
-            else:
-                # Regionless rom with any other language
+            return "World"                          # If it has any other language tag return World
+        
+        # Attempt to bail out early by matching on master sort regions
+        if "USA" in regionTags:
+            return "USA"
+        
+        if "Japan" in regionTags:
+            otherRegions = [r for r in regionTags if r != "Japan"]
+            if not otherRegions or "Ja" in languageTags:
+                return "Japan"
+            return "Japan"    
+            
+        if "Europe" in regionTags or "PAL" in regionTags:
+            return "Europe"
+        
+        if "World" in regionTags:
+            if not languageTags or "En" in languageTags:
+                return "USA"
+            if "Ja" in languageTags:
+                return "Japan"
+            return "World"
+        
+        # If we weren't able to bail out, match region against master list
+        for tag in regionTags:
+            if tag in rf.romRegion["USA"]:
+                if not languageTags or "En" in languageTags:
+                    return "USA"
                 return "World"
-        else:
-            # If no region tags or language tags
-            return "UnKwn"
+            if tag in rf.romRegion["Europe"]:
+                return "Europe"
+            if tag in rf.romRegion["World"]:
+                return "World"
+            if tag in rf.romRegion["EurWor"]:
+                if not "En" in languageTags:
+                    return "World"
+                return "Europe"    
+        
+        # Catch anything else that fell through the cracks
+        return "UnKwn"
     
     ##### Move the rom to the sorted location
     def move(rf):
