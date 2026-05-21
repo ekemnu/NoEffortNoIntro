@@ -8,7 +8,7 @@ class romFile():
             "USA": ( "USA", "Canada" ),
             "Japan": ( "Japan",),
             "Europe": ( "Europe", "Australia", "United Kingdom", "New Zealand", "PAL" ),
-            "EurWor": ( "Germany", "France", "Spain", "Italy", "Netherlands", "Sweden", "Denmark", "Norway", "Finland", "Poland", "Greece", "Portugal", "Hungary", "Scandinavia" ),
+            "EurWor": ( "Germany", "France", "Spain", "Italy", "Netherlands", "Sweden", "Denmark", "Norway", "Finland", "Poland", "Greece", "Portugal", "Hungary", "Austria", "Scandinavia" ),
             "World":  ( "World", "Asia", "Taiwan", "Korea", "China", "Brazil", "Russia", "Hong Kong", "Peru", "Argentina", "Mexico", "India", "Latin America" )
     }
     romLang = ( "En", "Fr", "Es", "De", "It", "Nl", "Ja", "Da", "Sv", "Pt", "No", "Fi", "Ru", "Ko", "Zh", "Pl", "Tr", "Cs", "Ar", "Zh-Hant", "Zh-Hans", "El", "Fr-CA", "Hr", "Hu", "Pt-BR", "Ca", "En-US", "En-GB", "Es-XL", "Yi", "Gd", "Sl", "Kw", "Ro", "Es-MX", "Pt-PT", "Es-ES")
@@ -63,7 +63,12 @@ class romFile():
     def sort(rf):
         regionTags = rf.tags["regionTags"]
         languageTags = rf.tags["languageTags"]
-        
+        regionUSA = rf.romRegion["USA"]
+        regionEurope = rf.romRegion["Europe"]
+        regionEurWor = rf.romRegion["EurWor"]
+        regionWorld  = rf.romRegion["World"]
+        regionJapan  = rf.romRegion["Japan"]
+
         rf.m.sb("Sorting rom...")
         # Try to match on language if no region tags
         if not regionTags:
@@ -79,21 +84,33 @@ class romFile():
         if "USA" in regionTags:
             return "USA"
         
+        if "Europe" in regionTags or "PAL" in regionTags:
+            if not languageTags or "En" in languageTags:
+                return "Europe"
+            
         if "Japan" in regionTags:
             otherRegions = [r for r in regionTags if r != "Japan"]
-            if not otherRegions or "Ja" in languageTags:
+            if not otherRegions:
                 return "Japan"
-            return "Japan"    
-            
-        if "Europe" in regionTags or "PAL" in regionTags:
-            return "Europe"
-        
+            if any(r in regionEurope for r in otherRegions):
+                if not languageTags or "En" in languageTags:
+                    return "Europe"
+            if any(r in regionUSA for r in otherRegions):
+                if not languageTags or "En" in languageTags:
+                    return "USA"
+            if "World" in otherRegions:
+                if not languageTags or "En" in languageTags:
+                    return "USA"
+            return "Japan"
+    
         if "World" in regionTags:
-            if not languageTags or "En" in languageTags:
+            if "En" in languageTags:
                 return "USA"
             if "Ja" in languageTags:
                 return "Japan"
-            return "World"
+            if languageTags and "En" not in languageTags:
+                return "World"
+            return "USA"
         
         # If we weren't able to bail out, match region against master list
         for tag in regionTags:
@@ -101,14 +118,19 @@ class romFile():
                 if not languageTags or "En" in languageTags:
                     return "USA"
                 return "World"
-            if tag in rf.romRegion["Europe"]:
-                return "Europe"
-            if tag in rf.romRegion["World"]:
+            if tag in regionEurope:
+                if not languageTags or "En" in languageTags:
+                    return "Europe"
+                else:
+                    return "World"
+            if tag in regionWorld:
                 return "World"
-            if tag in rf.romRegion["EurWor"]:
+            if tag in regionEurWor:
                 if not "En" in languageTags:
                     return "World"
-                return "Europe"    
+                return "Europe"
+            if tag in regionJapan:
+                return "Japan"
         
         # Catch anything else that fell through the cracks
         return "UnKwn"

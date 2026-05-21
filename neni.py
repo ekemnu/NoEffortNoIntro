@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.20
+#####   0.21
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -26,7 +26,9 @@
 #####       0.18 Further improvements to tag scraping logic
 #####       0.19 Rewrote Sort logic
 #####       0.20 Split codebase for easier maintainability
-#####       0.23 TODO: Added --dat, and the ability to scrape DAT files for file names to test code
+#####       0.21 Created tests to exercise scrape and sort logic. Fixed scrape and sort bugs these tests found.
+#####       0.2x TODO: Read archive TOC for sort and scrape logic, unzip into place
+#####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
@@ -61,7 +63,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.20')
+    parser.add_argument('--version', action='version', version='NenI 0.21')
     
     # Store the flags as an object
     flags = parser.parse_args()
