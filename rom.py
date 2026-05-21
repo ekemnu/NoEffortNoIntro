@@ -16,7 +16,7 @@ class romFile():
     
     def __init__(rf, fileName, pArchive, extPath, msg):
         rf.m = msg                          # Messener for writing lines to the terminal
-        rf.m.dv(locals(), "fileName", "pArchive", "extPath")
+        #rf.m.dv(locals(), "fileName", "pArchive", "extPath")
         rf.name = fileName                  # File name of the file
         rf.path = extPath.joinpath(fileName)# Stores full path to file
         rf.parent = pArchive                # Parent archive the file was extracted from
