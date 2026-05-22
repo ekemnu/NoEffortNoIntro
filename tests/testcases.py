@@ -21,12 +21,8 @@ Usage in tests:
 # Each group is labelled with the sort() branch it exercises.
 
 DEBUG_CASES = [ 
-    ("Defender (USA) (MR's)",
-     {"unSrted": ['USA', 'MR\'s'], 'regionTags': ['USA'], 'languageTags': [], 'miscTags': ["MR\'s"]})
-    ( "Defender (USA) (MR's)", "USA", "" \
-    "{'unSrted': ['USA', "MR's"], 'regionTags': ['USA'], 'languageTags': [], 'miscTags': ["MR's"]}" ),
-
-
+    ("2375180 - Saimin Arbeit (World) (En,Zh-Hant,Zh-Hans) (Windows)",
+     {"unSrted": ['World', 'En,Zh-Hant,Zh-Hans', 'Windows'], 'regionTags': ['World'], 'languageTags': ['En', 'Zh-Hant', 'Zh', 'Zh-Hans'], 'miscTags': ['Windows']}),
 ]
 
 SORT_CASES = [
@@ -176,7 +172,7 @@ SCRAPE_CASES = [
 
     # ── Language tags — plus-separated ──────────────────────────────────────
     ("2 Games in 1 - Disney Princesas + El Rey Leon (Spain) (Es+En,Fr,De,Es,It,Nl,Sv,Da)",
-     {"unSrted": ['Spain', 'Es+En,Fr,De,Es,It,Nl,Sv,Da'], 'regionTags': ['Spain'], 'languageTags': ['Es+En', 'Es', 'En', 'Fr', 'De', 'It', 'Nl', 'Sv', 'Da'], 'miscTags': []}),
+     {"unSrted": ['Spain', 'Es+En,Fr,De,Es,It,Nl,Sv,Da'], 'regionTags': ['Spain'], 'languageTags': ['Es', 'En', 'Fr', 'De', 'It', 'Nl', 'Sv', 'Da'], 'miscTags': []}),
 
     # ── Misc tags (not region, not language) ────────────────────────────────
     ("Alien Invasion (Europe) (Alt)",
@@ -216,17 +212,17 @@ SCRAPE_CASES = [
      {"unSrted": ['Ja'], 'regionTags': [], 'languageTags': ['Ja'], 'miscTags': []}),
 
     ("No Region Game (En+It)",
-     {"unSrted": ['En+It'], 'regionTags': [], 'languageTags': ['En', 'It'], 'miscTags': ['En+It']}),
+     {"unSrted": ['En+It'], 'regionTags': [], 'languageTags': ['En', 'It'], 'miscTags': []}),
 
     ("No Region Game (En+ It)",
-     {"unSrted": ['En+ It'], 'regionTags': [], 'languageTags': ['En', 'It'], 'miscTags': ['En+ It']}),
+     {"unSrted": ['En+ It'], 'regionTags': [], 'languageTags': ['En', 'It'], 'miscTags': []}),
 
     # ── Locale-suffix language codes (e.g. Zh-Hant, Fr-CA, En-US) ───────────
     ("2375180 - Saimin Arbeit (World) (En,Zh-Hant,Zh-Hans) (Windows)",
-     {"unSrted": ['World', 'En,Zh-Hant,Zh-Hans', 'Windows'], 'regionTags': ['World'], 'languageTags': ['En', 'Zh-Hant', 'Zh', 'Zh-Hans'], 'miscTags': ['Windows']}),
+     {"unSrted": ['World', 'En,Zh-Hant,Zh-Hans', 'Windows'], 'regionTags': ['World'], 'languageTags': ['En', 'Zh-Hant', 'Zh-Hans'], 'miscTags': ['Windows']}),
 
     ("Power Quest (USA) (En-US,En-GB,Fr,De,Es,It) (SGB Enhanced) (GB Compatible)",
-     {"unSrted": ['USA', 'En-US,En-GB,Fr,De,Es,It', 'SGB Enhanced', 'GB Compatible'], 'regionTags': ['USA'], 'languageTags': ['En-US', 'En', 'En-GB', 'Fr', 'De', 'Es', 'It'], 'miscTags': ['SGB Enhanced', 'GB Compatible']}),
+     {"unSrted": ['USA', 'En-US,En-GB,Fr,De,Es,It', 'SGB Enhanced', 'GB Compatible'], 'regionTags': ['USA'], 'languageTags': ['En-US', 'En-GB', 'Fr', 'De', 'Es', 'It'], 'miscTags': ['SGB Enhanced', 'GB Compatible']}),
 
     # ── BIOS entries (common edge case) ─────────────────────────────────────
     ("[BIOS] WonderSwan Boot ROM (Japan) (En)",
