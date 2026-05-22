@@ -128,8 +128,8 @@ class romArchive():
                 ra.m.wk(rom.name)
                 # Initialize a new instance of a romFile object
                 # Send name of rom, name of parent archive, where it was extracted to
-                romObj = romFile(rom.name, ra.zipPath, ra.extPath, ra.m)
-                ra.m.dv(locals(), "romObj")
+                #romObj = romFile(rom.name, ra.zipPath, ra.extPath, ra.m)
+                romObj = romFile(name=rom.name, parent=ra.zipPath, location=ra.extPath, m=ra.m)
                 #ra.m.dv(locals(), "romFiles")
                 # Scrape tags from the working rom
                 # Collects the tags into the archive
@@ -262,7 +262,7 @@ class romArchive():
         auditRomsTotals = { grp:ttl for (grp,ttl) in zip(auditRomsCnted[::2], auditRomsCnted[1::2])}   
         # Save the total number of roms        
         auditRomsTotals["Total"] = sum(auditRomsCnted[1::2])
-        ra.m.dv(locals(), "auditRomsTotals")
+        #ra.m.dv(locals(), "auditRomsTotals")
         # Save the totals to the archive's object
         ra.totals = auditRomsTotals
         return 0

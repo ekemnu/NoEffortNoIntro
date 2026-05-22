@@ -21,7 +21,12 @@ Usage in tests:
 # Each group is labelled with the sort() branch it exercises.
 
 DEBUG_CASES = [ 
-    ("The Best of Both (Japan, World) (En,Ja) (v1701d) (TNG)",          "USA"),  # comma + misc
+    ("Defender (USA) (MR's)",
+     {"unSrted": ['USA', 'MR\'s'], 'regionTags': ['USA'], 'languageTags': [], 'miscTags': ["MR\'s"]})
+    ( "Defender (USA) (MR's)", "USA", "" \
+    "{'unSrted': ['USA', "MR's"], 'regionTags': ['USA'], 'languageTags': [], 'miscTags': ["MR's"]}" ),
+
+
 ]
 
 SORT_CASES = [
@@ -47,7 +52,7 @@ SORT_CASES = [
     # ── Japan + Region + Language (No En) → Japan takes priority ────────────────
     ("Grand Theft Auto (Japan, Europe) (Ja)",                          "Japan"),   # comma-multiregion
     ("Hitman - Absolution (Japan, Europe) (Fr,Ja)",                    "Japan"),   # comma-multiregion
-    ("Final Boss of Pendantry, The (Japan, Canada) (Ja,Fr)",            "Japan"),   
+    ("Final Boss of Pendantry, The (Japan, Canada) (Ja,Fr)",           "Japan"),   
     
     # ── Europe (no USA, no Japan) → "Europe" ────────────────────────────────
     ("Alien Invasion (Europe)",                                         "Europe"),  # bare
@@ -106,7 +111,7 @@ SORT_CASES = [
     # ── World + Ja (no En) → "Japan" ────────────────────────────────────────
     ("Dress Wizard (World) (Ja)",                                       "Japan"),  # bare
     ("15 Game (World) (Ja) (WonderWitch) (Unl)",                        "Japan"),  # + misc
-    ("Ninja Jajamaru-kun (World) (Ja) (Virtual Console, Switch Online)", "Japan"),  # comma + misc
+    ("Ninja Jajamaru-kun (World) (Ja) (Virtual Console, Switch Online)","Japan"),  # comma + misc
 
     # ── Language-only En (no region tag at all) → "USA" ─────────────────────
     # Rare edge case; no real example found in 208k lines, so this is synthetic.
@@ -138,89 +143,100 @@ SORT_CASES = [
 #   for k, v in expected.items():
 #       assert set(v).issubset(set(tags[k]))
 #
-# "regionTags", "languageTags", "miscTags", "unSrted" are the dict keys.
+# "regionTags', 'languageTags', 'miscTags', 'unSrted" are the dict keys.
 
 SCRAPE_CASES = [
-
+    # {'unSrted': ['USA'], 'regionTags': ['USA'], 'languageTags': [], 'miscTags': []}
     # ── Basic region extraction ──────────────────────────────────────────────
     ("Alien Invasion (Europe)",
-     {"regionTags": ["Europe"], "languageTags": [], "miscTags": []}),
+     {"unSrted": ['Europe'], 'regionTags': ['Europe'], 'languageTags': [], 'miscTags': []}),
 
     ("16K Letter Writer (USA)",
-     {"regionTags": ["USA"], "languageTags": [], "miscTags": []}),
+     {"unSrted": ['USA'], 'regionTags': ['USA'], 'languageTags': [], 'miscTags': []}),
 
     ("Atmark Controller Key Assign Software (Japan) (v1.03)",
-     {"regionTags": ["Japan"]}),
+     {"unSrted": ['Japan', 'v1.03'], 'regionTags': ['Japan'], 'languageTags': [], 'miscTags': ['v1.03']}),
 
     # ── Multi-region, comma-separated ───────────────────────────────────────
     ("Adobe Illustrator 88 (USA, Europe)",
-     {"regionTags": ["USA", "Europe"]}),
+     {"unSrted": ['USA, Europe'], 'regionTags': ['USA', 'Europe'], 'languageTags': [], 'miscTags': []}),
+
+    ("I Got Three on It (Japan, Europe, Germany) (En)",
+     {"unSrted": ['Japan, Europe, Germany', 'En'], 'regionTags': ['Japan', 'Europe', 'Germany'], 'languageTags': ['En'], 'miscTags': []}),
 
     ("King's Valley (Japan, Europe) (En)",
-     {"regionTags": ["Japan", "Europe"], "languageTags": ["En"]}),
+     {"unSrted": ['Japan, Europe', 'En'], 'regionTags': ['Japan', 'Europe'], 'languageTags': ['En'], 'miscTags': []}),
 
     # ── Language tags — comma-separated ─────────────────────────────────────
     ("My Golf (Germany) (En,De)",
-     {"regionTags": ["Germany"], "languageTags": ["En", "De"]}),
+     {"unSrted": ['Germany', 'En,De'], 'regionTags': ['Germany'], 'languageTags': ['En', 'De'], 'miscTags': []}),
 
     ("Fantastic Dizzy (Europe) (En,Ja,Fr,De,Es,It)",
-     {"languageTags": ["En", "Ja", "Fr", "De", "Es", "It"]}),
+     {"unSrted": ['Europe', 'En,Ja,Fr,De,Es,It'], 'regionTags': ['Europe'], 'languageTags': ['En', 'Ja', 'Fr', 'De', 'Es', 'It'], 'miscTags': []}),
 
     # ── Language tags — plus-separated ──────────────────────────────────────
     ("2 Games in 1 - Disney Princesas + El Rey Leon (Spain) (Es+En,Fr,De,Es,It,Nl,Sv,Da)",
-     {"regionTags": ["Spain"], "languageTags": ["Es", "En", "Fr", "De", "It", "Nl", "Sv", "Da"]}),
+     {"unSrted": ['Spain', 'Es+En,Fr,De,Es,It,Nl,Sv,Da'], 'regionTags': ['Spain'], 'languageTags': ['Es+En', 'Es', 'En', 'Fr', 'De', 'It', 'Nl', 'Sv', 'Da'], 'miscTags': []}),
 
     # ── Misc tags (not region, not language) ────────────────────────────────
     ("Alien Invasion (Europe) (Alt)",
-     {"regionTags": ["Europe"], "miscTags": ["Alt"]}),
+     {"unSrted": ['Europe', 'Alt'], 'regionTags': ['Europe'], 'languageTags': [], 'miscTags': ['Alt']}),
 
     ("Gradius 2 (Japan, Europe) (En) (Wii U Virtual Console)",
-     {"regionTags": ["Japan", "Europe"], "languageTags": ["En"]}),
+     {"unSrted": ['Japan, Europe', 'En', 'Wii U Virtual Console'], 'regionTags': ['Japan', 'Europe'], 'languageTags': ['En'], 'miscTags': ['Wii U Virtual Console']}),
 
     # ── PAL tag ─────────────────────────────────────────────────────────────
     ("Bobby Is Going Home (Brazil) (En) (PAL) (Unl)",
-     {"regionTags": ["Brazil", "PAL"], "languageTags": ["En"]}),
+     {"unSrted": ['Brazil', 'En', 'PAL', 'Unl'], 'regionTags': ['Brazil', 'PAL'], 'languageTags': ['En'], 'miscTags': ['Unl']}),
 
     # ── PAL variant tag ─────────────────────────────────────────────────────
     # SYNTHETIC — PAL-A/B variants do not appear as standalone region in dataset:
     ("Some Game (PAL-A)",
-     {"regionTags": ["PAL-A"], "languageTags": []}),
+     {"unSrted": ['PAL-A'], 'regionTags': ['PAL'], 'languageTags': [], 'miscTags': []}),
 
     # ── No tags at all ──────────────────────────────────────────────────────
     ("Game With Absolutely No Tags",
-     {"regionTags": [], "languageTags": [], "miscTags": []}),
+     {"unSrted": [], 'regionTags': [], 'languageTags': [], 'miscTags': []}),
 
     # ── World region ─────────────────────────────────────────────────────────
     ("Felix the Cat (World) (En)",
-     {"regionTags": ["World"], "languageTags": ["En"]}),
+     {"unSrted": ['World', 'En'], 'regionTags': ['World'], 'languageTags': ['En'], 'miscTags': []}),
 
     ("5 Days a Stranger (World) (De,It,Fi,Tr,Hu)",
-     {"regionTags": ["World"], "languageTags": ["De", "It", "Fi", "Tr", "Hu"]}),
+     {"unSrted": ['World', 'De,It,Fi,Tr,Hu'], 'regionTags': ['World'], 'languageTags': ['De', 'It', 'Fi', 'Tr', 'Hu'], 'miscTags': []}),
 
     # ── Language-only (no region) — synthetic ───────────────────────────────
     ("No Region Game (En)",
-     {"regionTags": [], "languageTags": ["En"]}),
+     {"unSrted": ['En'], 'regionTags': [], 'languageTags': ['En'], 'miscTags': []}),
+
+     ("Not Even a Real Language (Kl)",
+     {"unSrted": ['Kl'], 'regionTags': [], 'languageTags': [], 'miscTags': ['Kl']}),
 
     ("No Region Game (Ja)",
-     {"regionTags": [], "languageTags": ["Ja"]}),
+     {"unSrted": ['Ja'], 'regionTags': [], 'languageTags': ['Ja'], 'miscTags': []}),
+
+    ("No Region Game (En+It)",
+     {"unSrted": ['En+It'], 'regionTags': [], 'languageTags': ['En', 'It'], 'miscTags': ['En+It']}),
+
+    ("No Region Game (En+ It)",
+     {"unSrted": ['En+ It'], 'regionTags': [], 'languageTags': ['En', 'It'], 'miscTags': ['En+ It']}),
 
     # ── Locale-suffix language codes (e.g. Zh-Hant, Fr-CA, En-US) ───────────
-    # scrape() should normalise or at least not crash on these.
     ("2375180 - Saimin Arbeit (World) (En,Zh-Hant,Zh-Hans) (Windows)",
-     {"regionTags": ["World"]}),
+     {"unSrted": ['World', 'En,Zh-Hant,Zh-Hans', 'Windows'], 'regionTags': ['World'], 'languageTags': ['En', 'Zh-Hant', 'Zh', 'Zh-Hans'], 'miscTags': ['Windows']}),
 
     ("Power Quest (USA) (En-US,En-GB,Fr,De,Es,It) (SGB Enhanced) (GB Compatible)",
-     {"regionTags": ["USA"]}),
+     {"unSrted": ['USA', 'En-US,En-GB,Fr,De,Es,It', 'SGB Enhanced', 'GB Compatible'], 'regionTags': ['USA'], 'languageTags': ['En-US', 'En', 'En-GB', 'Fr', 'De', 'Es', 'It'], 'miscTags': ['SGB Enhanced', 'GB Compatible']}),
 
     # ── BIOS entries (common edge case) ─────────────────────────────────────
     ("[BIOS] WonderSwan Boot ROM (Japan) (En)",
-     {"regionTags": ["Japan"], "languageTags": ["En"]}),
+     {"unSrted": ['Japan', 'En'], 'regionTags': ['Japan'], 'languageTags': ['En'], 'miscTags': []}),
 
     ("[BIOS] Nintendo 64 - PIF (Japan, USA)",
-     {"regionTags": ["Japan", "USA"]}),
+     {"unSrted": ['Japan, USA'], 'regionTags': ['Japan', 'USA'], 'languageTags': [], 'miscTags': []}),
 
     # ── Ampersand in title (HTML-escaped in some sets) ───────────────────────
     ("Tom and Jerry - The Movie (USA, Europe) (En,Ja)",
-     {"regionTags": ["USA", "Europe"], "languageTags": ["En", "Ja"]}),
+     {"unSrted": ['USA, Europe', 'En,Ja'], 'regionTags': ['USA', 'Europe'], 'languageTags': ['En', 'Ja'], 'miscTags': []}),
 
 ]
