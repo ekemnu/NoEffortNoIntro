@@ -18,7 +18,7 @@ class romFile:
     }
     romLang: ClassVar[tuple] = ( 
             "En", "Fr", "Es", "De", "It", "Nl", "Ja", "Da", "Sv", "Pt", "No", "Fi", "Ru", "Ko", "Zh", "Pl", "Tr", "Cs", "Ar", "Zh-Hant", "Zh-Hans", 
-            "El", "Fr-CA", "Hr", "Hu", "Pt-BR", "Ca", "En-US", "En-GB", "Es-XL", "Yi", "Gd", "Sl", "Kw", "Ro", "Es-MX", "Pt-PT", "Es-ES"
+            "El", "Fr-CA", "Hr", "Hu", "Pt-BR", "Ca", "En-US", "En-GB", "Es-XL", "Yi", "Gd", "Sl", "Kw", "Ro", "Es-MX", "Pt-PT", "Es-ES", "Es+En"
     )
     romRegions:    ClassVar[list] = list(chain(*romRegion.values()))   # Get a list of all regions in the romRegion dictionary
     reScrapePtrn:  ClassVar[re.Pattern[str]] = re.compile(r'\((?=[^(]*\))(.*?)\)')
@@ -29,7 +29,7 @@ class romFile:
     name:        str                                            # File name of the file
     parent:      Path                                           # Parent archive the file was extracted from
     location:    Path                                           # Stores in what directory the file is located
-    m:           object                                         # Messenger for writing lines to the terminal
+    m:           object                                         # Messener for writing lines to the terminal
     path:        Path = field(init=False)                       # Stores full path to file
     srtLocation: str = field(default="",  init=False)           # Directory relative to root ext dir to which the file should be moved
     outLocation: str = field(default="",  init=False)           # Final location of sorted rom
@@ -40,47 +40,42 @@ class romFile:
     srtLanguage: str = field(default="",  init=False)           # Stores sort language determined by the sort method
     tags:        dict = field(default_factory=dict, init=False) # Stores a list of all the tags from the scrape method
 
+    #def __post_init__(rf):
+    #    rf.path = rf.location / rf.name                        # Creates fully qualified path to file
     
     # Takes the full file name of the current working file, scrapes it for tags and returns those tags
     def scrape(rf):
         rf.m.sb("Gathering tags...")
-        rawTags = rf.reScrapePtrn.findall(rf.name)                      # Scrape file name for all occurrences of (***)
+        rawTags = rf.reScrapePtrn.findall(rf.name)                   # Scrape file name for all occurrences of (***)
 
-        if rawTags:                                                     # If the file has tags
-            for rawTag in rawTags:                                      # For each of the collected tags
+        if rawTags:                                                  # If the file has tags
+            for rawTag in rawTags:                                   # For each of the collected tags
                 for splitTag in rf.reSplitPtrn.split(rawTag):
-                    # Is the tag a region tag?
-                    if splitTag in rf.romRegions:                       # If the tag can be found in the regions list
-                        rf.region.append(splitTag)                      # Add it to the regionTags list
+                    if splitTag in rf.romRegions:                          # If the tag can be found in the regions list
+                        rf.region.append(splitTag)                         # Add it to the regionTags list
                         continue
-                    # Does the tag match language tag format?
-                    if rf.reLangPtrn.match(splitTag):                   # If the file matches the format of a language tag
-                        if splitTag in rf.language:                     # Skip if its a duplicate
-                            continue
+                    if rf.reLangPtrn.match(splitTag):                      # If the file matches the format of a language tag
                         if splitTag in rf.romLang:
-                            rf.language.append(splitTag)                # Add it to the languageTags list
-                            continue
-                        if "+" in splitTag:                             # If the tag has a "+" in it
-                            for lt in rf.reLnSplitPtrn.split(splitTag): # Split it into two tags
-                                if lt in rf.romLang and lt not in rf.language:
+                            rf.language.append(splitTag)                       # Add it to the languageTags list
+                        else:
+                            rf.infoTags.append(splitTag)                       # Must not have been a language tag afterall vOv
+                        if "+" in splitTag or "-" in splitTag:                 # If the tag has a "+" or "-" in it
+                            for lt in rf.reLnSplitPtrn.split(splitTag):
+                                if lt in rf.romLang:
                                     rf.language.append(lt)
-                            continue    
-                        # If it looks like a language tag but is not
-                        rf.infoTags.append(splitTag)                    # Add it to miscTags vOv
+                            #rf.language.extend(rf.reLnSplitPtrn.split(splitTag))
                         continue
-                    # If the tag is a PAL varient treat it like a region
                     if splitTag.startswith("PAL"):                      # If the Tag is a PAL variant
-                        rf.region.append("PAL")                         # Add it to the regionTags list
+                        rf.region.append("PAL")                          # Add it to the regionTags list
                         continue
-                    # If the tag could not be classified
-                    rf.infoTags.append(splitTag)                        # Add it to the miscTags list
+                    rf.infoTags.append(splitTag)            # Add it to the miscTags list
                     continue
 
-        rf.tags = { "unSrted":      rawTags, 
-                    "regionTags":   rf.region, 
-                    "languageTags": rf.language,
-                    "miscTags":     rf.infoTags }
-
+        rf.tags = { "unSrted": rawTags, 
+                    "regionTags": list(dict.fromkeys(rf.region)), 
+                    "languageTags": list(dict.fromkeys(rf.language)),
+                    "miscTags": list(dict.fromkeys(rf.infoTags)) }
+        
         rf.m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
         return rf.tags
 
@@ -153,7 +148,7 @@ class romFile:
             if tag in regionWorld:
                 return "World"
             if tag in regionEurWor:
-                if "En" not in languageTags:
+                if not "En" in languageTags:
                     return "World"
                 return "Europe"
             if tag in regionJapan:
@@ -163,15 +158,12 @@ class romFile:
         return "UnKwn"
     
     ##### Move the rom to the sorted location
-    def move(rf, zipfile):
-        rz = zipfile
-
+    def move(rf):
         # Creates fully qualified path to file
         rf.path = rf.location / rf.name
         # Attempt to move the rom to the sorted location
         try:
-            rz.extract(rf.name, rf.srtLocation)
-            #rf.path.rename(rf.srtLocation.joinpath(rf.name))
+            rf.path.rename(rf.srtLocation.joinpath(rf.name))
         # Error if unable to move
         except Exception as e:
             rf.m.er("Unable to move", rf.name, "to sort location", rf.srtLocation, str(e))

@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.23
+#####   0.22
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -28,7 +28,7 @@
 #####       0.20 Split codebase for easier maintainability
 #####       0.21 Created tests to exercise scrape and sort logic. Fixed scrape and sort bugs these tests found.
 #####       0.22 Refactored romFile() to be a dataclass, scraping logic and romFile performance improvements
-#####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
+#####       0.2x TODO: Read archive TOC for sort and scrape logic, unzip into place
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
@@ -64,7 +64,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.23')
+    parser.add_argument('--version', action='version', version='NenI 0.22')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -81,13 +81,11 @@ def argParser():
 
 ##### Processes targets specified at runtime
 def chkTargets(targets, msg):    
-    #from chkTargets import chkTargetsTEST
-    #tgtList = chkTargetsTEST(targets, msg)
-    #return tgtList
     m = msg
     tgtList = []
     
     m.st("Checking target archive...")
+    m.dv(locals(), "targets")
     for target in targets:
         target = Path(target)
         # Check to see if the target is a file or directory
@@ -99,7 +97,7 @@ def chkTargets(targets, msg):
             continue
         # If the target wasn't a file, was it a directory?
         elif target.is_dir():
-            tgtList.extend([ f for f in target.glob('*.zip', case_sensitive=None) ])
+            tgtList = [ f for f in target.glob('*.zip', case_sensitive=None) ]
             m.de("is dir")
             # Target is a directory, scan it for archives
             m.st("Gathering Archives From Source Directory...")
@@ -115,6 +113,7 @@ def chkTargets(targets, msg):
             m.ex("Error")
             sys.exit(1)
     # Return the list of full paths to the targets
+    print("tgtList", tgtList, type(tgtList))
     return tgtList
 
 # Defines the order subroutines are executed
@@ -124,6 +123,7 @@ def mainRoutine():
     flags = argParser()
     # Initialize the msg engine
     m = messenger(flags.debug, flags.verbose)
+    m.dv(locals(), "flags")
     # Set the target(s) and returns absolute path(s) and then
     # iterates through all archives that were passed to the script
     for target in chkTargets(flags.targets, m):
@@ -132,7 +132,7 @@ def mainRoutine():
         archive = romArchive(
             # Stores the full path of the target archive
             target,
-            # Sets the user defined extraction location
+            # Stores the user defined extraction location
             flags.extTo,
             # Sets the user defined processed output destination
             flags.outDest, 
