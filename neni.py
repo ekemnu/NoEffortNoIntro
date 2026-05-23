@@ -81,6 +81,9 @@ def argParser():
 
 ##### Processes targets specified at runtime
 def chkTargets(targets, msg):    
+    #from chkTargets import chkTargetsTEST
+    #tgtList = chkTargetsTEST(targets, msg)
+    #return tgtList
     m = msg
     tgtList = []
     
@@ -96,7 +99,7 @@ def chkTargets(targets, msg):
             continue
         # If the target wasn't a file, was it a directory?
         elif target.is_dir():
-            tgtList.extend = [ f for f in target.glob('*.zip', case_sensitive=None) ]
+            tgtList.extend([ f for f in target.glob('*.zip', case_sensitive=None) ])
             m.de("is dir")
             # Target is a directory, scan it for archives
             m.st("Gathering Archives From Source Directory...")
