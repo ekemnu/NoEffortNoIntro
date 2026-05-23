@@ -29,7 +29,7 @@ class romFile:
     name:        str                                            # File name of the file
     parent:      Path                                           # Parent archive the file was extracted from
     location:    Path                                           # Stores in what directory the file is located
-    m:           object                                         # Messener for writing lines to the terminal
+    m:           object                                         # Messenger for writing lines to the terminal
     path:        Path = field(init=False)                       # Stores full path to file
     srtLocation: str = field(default="",  init=False)           # Directory relative to root ext dir to which the file should be moved
     outLocation: str = field(default="",  init=False)           # Final location of sorted rom
@@ -163,12 +163,15 @@ class romFile:
         return "UnKwn"
     
     ##### Move the rom to the sorted location
-    def move(rf):
+    def move(rf, zipfile):
+        rz = zipfile
+
         # Creates fully qualified path to file
         rf.path = rf.location / rf.name
         # Attempt to move the rom to the sorted location
         try:
-            rf.path.rename(rf.srtLocation.joinpath(rf.name))
+            rz.extract(rf.name, rf.srtLocation)
+            #rf.path.rename(rf.srtLocation.joinpath(rf.name))
         # Error if unable to move
         except Exception as e:
             rf.m.er("Unable to move", rf.name, "to sort location", rf.srtLocation, str(e))

@@ -1,14 +1,13 @@
 import sys                      # Used to exit the script
 import shutil                   # Used to move and unzip files and archives
 from pathlib import Path        # Used to perform os independent path manipulation
+from zipfile import ZipFile
 from rom import romFile
 
 ##### Stores information about the rom collection, and performs operations on it
 class romArchive():
     ##### Variables that are specific to the instanced object
     def __init__(ra, zipFile, extTo, outDest, relVers, homeRgn, ptend, sXtrct, noAudit, msg, exeTime):
-        print("extto", extTo, type(extTo))
-        print("outDest", outDest, type(outDest))
         ra.m         = msg                          # Messenger for writing lines to terminal
         ra.zipFile   = zipFile                      # Stores the full path to the target archive
         ra.zipPath   = zipFile.parent               # Stores the directory in which the target archive is located
@@ -29,6 +28,8 @@ class romArchive():
         ra.homeRgn = homeRgn
         ra.noAudit = noAudit
         ra.processed = False
+        ra.zf = ZipFile(ra.zipFile)
+
         
         if not ra.zipFn.endswith(".zip"):
             # If the extension is not .zip
@@ -49,7 +50,7 @@ class romArchive():
     # Processes the current target archive when called
     def process(ra):
         # Decompress the target archive
-        ra.unzip()
+        #ra.unzip()
         # Gather a list of all files extracted from the target archive
         ra.getFiles()
         # Gather information about the extracted files
@@ -101,9 +102,30 @@ class romArchive():
             # Skip decompression if pretend enabled
             ra.m.n("Skipping Decompression Because We're Pretending")
             return 0
-    
+
+    def getFiles(ra):        
+        ra.m.st("Gathering Files Information From Target Archive...")
+        zf = ra.zf
+        # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
+        for r in zf.namelist():
+            if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
+                ra.romList["unSrted"].append(r)
+
+        #ra.romList["unSrted"] = [ r for r in zf.namelist() if r.lower().endswith(".zip") and not r.startswith('[BIOS]') ]
+        
+        if not ra.romList["unSrted"]:
+            # If no files were gathered from the extraction path
+            ra.m.er("Unable to Retrieve File Information From Target Archive")
+            ra.m.ei("No Such File or Directory")
+            ra.m.ex("Error")
+            sys.exit(1)
+        else:
+            # Successfully gathered files
+            ra.m.sb("Files Gathered")
+            return 0
+
     ##### Gets a list, and iterates through all roms in the extraction path
-    def getFiles(ra):
+    def getFilesOLD(ra):
         ra.m.st("Gathering Files From Extraction Target Directory...")
         # Get a list of files from the extraction dir and add to unsorted list, exclude [BIOS] files
         ra.romList["unSrted"] = [ rf for rf in ra.extPath.glob('*.zip', case_sensitive=None) if not rf.name.startswith('[BIOS]')]
@@ -124,43 +146,40 @@ class romArchive():
         # For each of the unsorted rom list
         for rom in ra.romList["unSrted"]:
             # If the file is a archive, and is not a bios
-            if '[BIOS]' not in rom.name:
-                ra.m.wk(rom.name)
-                # Initialize a new instance of a romFile object
-                # Send name of rom, name of parent archive, where it was extracted to
-                #romObj = romFile(rom.name, ra.zipPath, ra.extPath, ra.m)
-                romObj = romFile(name=rom.name, parent=ra.zipPath, location=ra.extPath, m=ra.m)
-                #ra.m.dv(locals(), "romFiles")
-                # Scrape tags from the working rom
-                # Collects the tags into the archive
-                ra.collectTags(romObj.scrape())
-                # Attempts to sort the rom into one of the master sort regions
-                romObj.srtRegion = romObj.sort()
-                # Stores the rom to the archive by sorted region
-                if romObj.srtRegion == "UnKwn":
-                    # Prints warning message with name of unmatched file
-                    ra.m.wn("Unable to match", romObj.name)
-                    # Add rom object to the unknown list
-                    ra.romList[romObj.srtRegion].append(romObj)
-                    # Prints debug substatement with location of skipped file
-                    ra.m.lf(romObj.name)
-                    # Set the sort location to be the root directory
+            ra.m.wk(rom)
+            # Initialize a new instance of a romFile object
+            # Send name of rom, name of parent archive, where it was extracted to
+            #romObj = romFile(rom.name, ra.zipPath, ra.extPath, ra.m)
+            romObj = romFile(name=rom, parent=ra.zipPath, location=ra.extPath, m=ra.m)
+            #ra.m.dv(locals(), "romFiles")
+            # Scrape tags from the working rom
+            # Collects the tags into the archive
+            ra.collectTags(romObj.scrape())
+            # Attempts to sort the rom into one of the master sort regions
+            romObj.srtRegion = romObj.sort()
+            # Stores the rom to the archive by sorted region
+            if romObj.srtRegion == "UnKwn":
+                # Prints warning message with name of unmatched file
+                ra.m.wn("Unable to match", romObj.name)
+                # Add rom object to the unknown list
+                ra.romList[romObj.srtRegion].append(romObj)
+                # Prints debug substatement with location of skipped file
+                ra.m.lf(romObj.name)
+                # Set the sort location to be the root directory
+                romObj.srtLocation = ra.extPath
+            else:
+                # Prints message with name of matched file and sort region
+                ra.m.ma(romObj.name, romObj.srtRegion)
+                # Add rom object to the list by sort region
+                ra.romList[romObj.srtRegion].append(romObj)
+                # Handle user selectable region flag homeRgn
+                if ra.homeRgn == romObj.srtRegion:
+                    # if sort region is selected region leave in root
                     romObj.srtLocation = ra.extPath
                 else:
-                    # Prints message with name of matched file and sort region
-                    ra.m.ma(romObj.name, romObj.srtRegion)
-                    # Add rom object to the list by sort region
-                    ra.romList[romObj.srtRegion].append(romObj)
-                    # Handle user selectable region flag homeRgn
-                    if ra.homeRgn == romObj.srtRegion:
-                        # if sort region is selected region leave in root
-                        romObj.srtLocation = ra.extPath
-                    else:
-                        # Set the rom's final location to be a region sort folder
-                        romObj.srtLocation = ra.extPath.joinpath(romObj.srtRegion)
-                continue
-            else:
-                continue
+                    # Set the rom's final location to be a region sort folder
+                    romObj.srtLocation = ra.extPath.joinpath(romObj.srtRegion)
+            continue
         return 0
 
     ##### Takes a set of tags and appends to a complete set of tags from the current working archive
@@ -176,6 +195,7 @@ class romArchive():
         return 0
     
     ##### Creates sort directories as needed and moves sorted files into directories
+    # Executes the sort list, moving the roms to their sort folders    
     def moveRoms(ra):
         # Creates the sort directories as needed
         def makeDir(outLocation, srtFolder):
@@ -195,6 +215,7 @@ class romArchive():
         # Executes the sort list, moving the roms to their sort folders
         ra.m.st("Moving Sorted Roms ...")
         if not ra.pretend:
+            zf = ra.zf
             # Iterate through romList groups skipping the unsorted list
             for romGrp in list(ra.romList.keys())[1:]:
                 # Only process if group is not empty
@@ -207,8 +228,8 @@ class romArchive():
                         if not Path.is_dir(rom.srtLocation):
                             makeDir(rom.srtLocation, rom.srtRegion)
                         # move the rom to it's destination
-                        if rom.move() == 0: # Move the rom and check for success 
-                             # If successful move to next rom in list
+                        if rom.move(zf) == 0: # Move the rom and check for success 
+                            # If successful move to next rom in list
                             continue
                         else:
                             # Fail if rom move was not successful
@@ -217,11 +238,41 @@ class romArchive():
                             sys.exit(1)
                     # Continue to next rom after processing
                     continue       
+            zf.close()
         else:
             ra.m.n("Skipping Rom Move Because We're Pretending")
             return 0
     
     ##### Moves the fully processed archive from the extraction directory to final destination
+    def moveNEW(ra):
+        if not ra.pretend:
+            ra.m.st("Moving Working Directory to Output Destination...")
+            # Set the output location
+            mvLoc = ra.outDest.joinpath(ra.zipFnRoot)
+            # If the output location isn't the same as extraction location
+            if mvLoc != ra.extPath:
+                # If the output location doesn't exist
+                if not ra.outDest.is_dir():
+                    # Create the output location
+                    ra.outDest.mkdir()
+                # Move the working directory to the final destination
+                with ZipFile("data.zip") as rz:
+                    zf.extract(ra.zipFnRoot, ra.outDest)
+                #ra.extPath.replace(mvLoc)
+                # Set the target archives out destination to the outputed location
+                ra.outDest = mvLoc
+                # Print message notifying user of successful move
+                ra.m.sb("Moved to:", str(ra.outDest))
+                return 0
+            else:
+                 # Skip if extraction and output directory are the same
+                 ra.m.sb("Working Extraction Directory and Destination are Identical, Skipping")
+                 return 1
+        else:
+            # Skip if we're pretending
+            ra.m.n("Skipping Output Move Because We're Pretending")
+            return 0
+    
     def move(ra):
         if not ra.pretend:
             ra.m.st("Moving Working Directory to Output Destination...")
