@@ -18,6 +18,11 @@ def argParser():
 
 flags = argParser()
 
+# Initialize variables to match what romFile expects
+ra_zipPath = "/home/john/.local/tmp"
+ra_extPath = Path("tmp", "testcases")
+valFile = "tests/validation-performance-all_games_list.pkl"
+
 ### Test for regressions code path ###
 ra_m = messenger(debug=False, verbose=False)
 with open(valFile, "rb") as c:
@@ -34,17 +39,16 @@ for fileName, expectedSrt, expectedTags in CASES:
     # Trigger romFile to sort the filename
     rom_sorted = romObj.sort()   
     
-    if not flags.outPut:
-        assert rom_tags == expectedTags, (
-            f"\nFileName: {rom_name}\n" 
-            f"Returned: {rom_tags}\n"
-            f"Expected: {expectedTags}\n"
-            f"Sorted:   {rom_sorted}\n"
-            f"Tag Error" )
-        
-        assert rom_sorted == expectedSrt, (
-            f"\nFileName: {rom_name}\n" 
-            f"Returned: {rom_tags}\n"
-            f"Expected: {expectedSrt}\n"
-            f"Sorted:   {rom_sorted}\n" 
-            f"Sort Error" )
+    assert rom_tags == expectedTags, (
+        f"\nFileName: {rom_name}\n" 
+        f"Returned: {rom_tags}\n"
+        f"Expected: {expectedTags}\n"
+        f"Sorted:   {rom_sorted}\n"
+        f"Tag Error" )
+    
+    assert rom_sorted == expectedSrt, (
+        f"\nFileName: {rom_name}\n" 
+        f"Returned: {rom_tags}\n"
+        f"Expected: {expectedSrt}\n"
+        f"Sorted:   {rom_sorted}\n" 
+        f"Sort Error" )
