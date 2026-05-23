@@ -28,7 +28,7 @@
 #####       0.20 Split codebase for easier maintainability
 #####       0.21 Created tests to exercise scrape and sort logic. Fixed scrape and sort bugs these tests found.
 #####       0.22 Refactored romFile() to be a dataclass, scraping logic and romFile performance improvements
-#####       0.2x TODO: Read archive TOC for sort and scrape logic, unzip into place
+#####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
@@ -97,7 +97,7 @@ def chkTargets(targets, msg):
             continue
         # If the target wasn't a file, was it a directory?
         elif target.is_dir():
-            tgtList = [ f for f in target.glob('*.zip', case_sensitive=None) ]
+            tgtList.extend = [ f for f in target.glob('*.zip', case_sensitive=None) ]
             m.de("is dir")
             # Target is a directory, scan it for archives
             m.st("Gathering Archives From Source Directory...")
@@ -113,7 +113,6 @@ def chkTargets(targets, msg):
             m.ex("Error")
             sys.exit(1)
     # Return the list of full paths to the targets
-    print("tgtList", tgtList, type(tgtList))
     return tgtList
 
 # Defines the order subroutines are executed
