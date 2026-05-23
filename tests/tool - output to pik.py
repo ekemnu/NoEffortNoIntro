@@ -13,10 +13,6 @@ import pickle
 from all_known_games import ALL_GAMES
 ra_m = messenger(debug=False, verbose=False)
 
-with open("pickledump.pkl", "wb") as f:
-    pickle.dump(ALL_GAMES, f)
-    exit()
-
 results = [ ]
 
 for fileName in ALL_GAMES:
