@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.23
+#####   0.22
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -64,7 +64,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.23')
+    parser.add_argument('--version', action='version', version='NenI 0.22')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -81,13 +81,11 @@ def argParser():
 
 ##### Processes targets specified at runtime
 def chkTargets(targets, msg):    
-    #from chkTargets import chkTargetsTEST
-    #tgtList = chkTargetsTEST(targets, msg)
-    #return tgtList
     m = msg
     tgtList = []
     
     m.st("Checking target archive...")
+    m.dv(locals(), "targets")
     for target in targets:
         target = Path(target)
         # Check to see if the target is a file or directory
@@ -99,7 +97,7 @@ def chkTargets(targets, msg):
             continue
         # If the target wasn't a file, was it a directory?
         elif target.is_dir():
-            tgtList.extend([ f for f in target.glob('*.zip', case_sensitive=None) ])
+            tgtList.extend = [ f for f in target.glob('*.zip', case_sensitive=None) ]
             m.de("is dir")
             # Target is a directory, scan it for archives
             m.st("Gathering Archives From Source Directory...")
@@ -124,6 +122,7 @@ def mainRoutine():
     flags = argParser()
     # Initialize the msg engine
     m = messenger(flags.debug, flags.verbose)
+    m.dv(locals(), "flags")
     # Set the target(s) and returns absolute path(s) and then
     # iterates through all archives that were passed to the script
     for target in chkTargets(flags.targets, m):
@@ -132,7 +131,7 @@ def mainRoutine():
         archive = romArchive(
             # Stores the full path of the target archive
             target,
-            # Sets the user defined extraction location
+            # Stores the user defined extraction location
             flags.extTo,
             # Sets the user defined processed output destination
             flags.outDest, 
