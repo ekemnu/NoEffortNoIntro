@@ -30,7 +30,7 @@ class romFile:
     parent:      Path                                           # Parent archive the file was extracted from
     location:    Path                                           # Stores in what directory the file is located
     m:           object                                         # Messenger for writing lines to the terminal
-    path:        Path = field(init=False)                       # Stores full path to file
+    path:        Path = field(default=None, init=False)                       # Stores full path to file
     srtLocation: str = field(default="",  init=False)           # Directory relative to root ext dir to which the file should be moved
     outLocation: str = field(default="",  init=False)           # Final location of sorted rom
     region:      list = field(default_factory=list, init=False) # Region(s) as scraped from file's tags
