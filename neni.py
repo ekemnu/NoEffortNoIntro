@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.23
+#####   0.22
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -27,13 +27,8 @@
 #####       0.19 Rewrote Sort logic
 #####       0.20 Split codebase for easier maintainability
 #####       0.21 Created tests to exercise scrape and sort logic. Fixed scrape and sort bugs these tests found.
-<<<<<<< Updated upstream
 #####       0.22 Refactored romFile() to be a dataclass, scraping logic and romFile performance improvements
 #####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
-=======
-#####       0.22 Refactored romFile() to be a dataclass, scraping/sort logic and performance improvements
-#####       0.23 Read archive TOC for sort and scrape logic, unzip into place
->>>>>>> Stashed changes
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
@@ -69,7 +64,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.23')
+    parser.add_argument('--version', action='version', version='NenI 0.22')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -90,7 +85,6 @@ def chkTargets(targets, msg):
     tgtList = []
     
     m.st("Checking target archive...")
-    m.dv(locals(), "targets")
     for target in targets:
         target = Path(target)
         # Check to see if the target is a file or directory
@@ -127,7 +121,6 @@ def mainRoutine():
     flags = argParser()
     # Initialize the msg engine
     m = messenger(flags.debug, flags.verbose)
-    m.dv(locals(), "flags")
     # Set the target(s) and returns absolute path(s) and then
     # iterates through all archives that were passed to the script
     for target in chkTargets(flags.targets, m):
@@ -136,7 +129,7 @@ def mainRoutine():
         archive = romArchive(
             # Stores the full path of the target archive
             target,
-            # Stores the user defined extraction location
+            # Sets the user defined extraction location
             flags.extTo,
             # Sets the user defined processed output destination
             flags.outDest, 
