@@ -29,4 +29,3 @@ for fileName in ALL_GAMES:
 
 with open("pickledump.pkl", "wb") as f:
     pickle.dump(results, f)
-
