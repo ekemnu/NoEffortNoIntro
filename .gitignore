@@ -2,7 +2,14 @@
 *
 
 # White list files for git to track
+!archive.py
+!dbug.py
+!__main__.py
+!messenger.py
+!neni.py
+!rom.py
 !*.py
+
 !README.md
 !.gitignore
 !tests/
