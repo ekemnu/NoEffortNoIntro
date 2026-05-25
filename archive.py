@@ -1,8 +1,9 @@
 import sys                      # Used to exit the script
-#import shutil                   # Used to move and unzip files and archives
 from pathlib import Path        # Used to perform os independent path manipulation
 from zipfile import ZipFile
+from queue import Queue
 from rom import romFile
+
 
 ##### Stores information about the rom collection, and performs operations on it
 class romArchive():
@@ -23,6 +24,7 @@ class romArchive():
                 "unSrted": [], "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
         ra.colTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] }           # Stores scraped tags
         ra.totals = {"USA": 0, "Japan": 0, "Europe": 0, "World": 0, "UnKwn": 0, "Total": 0, "Tags": { } } # Stores totals
+        ra.extractQueue = Queue()
         ra.skipExtract = sXtrct
         ra.pretend = ptend
         ra.homeRgn = homeRgn
@@ -38,7 +40,6 @@ class romArchive():
         else:
             # If the extension is .zip
             ra.m.st("Processing Archive", ra.zipFn + "....")
-            ra.zf = ZipFile(ra.zipFile)
             # Handle user output destination flag
             if not ra.outDest:
                 # Sets the final destination to be the same as the target archive
@@ -65,50 +66,14 @@ class romArchive():
         ra.auditLog()
         # Mark the archive as fully processed
         ra.markProcessed()
-    
-    ##### Unzips the target archive
-    def unzip(ra):
-        ra.m.de("unzip")
-        # If neither pretend nor skip extraction are enabled
-        if not ra.pretend:
-            if not ra.skipExtract:
-                ra.m.st("Checking Extraction Directory...", str(ra.extPath))
-                # Check if extraction directory already exists
-                if not ra.extPath.is_dir():
-                    ra.m.st("Decompressing Archive...")
-                    try: 
-                        # Decompress the archive to the extraction destination
-                        shutil.unpack_archive(ra.zipFile, ra.extPath, "zip")
-                    except Exception as e:
-                        # If the decompress returned an error
-                        ra.m.er("Archive Decompression Failed", str(e))
-                        ra.m.ex("Error")
-                        sys.exit(1)
-                    else:
-                        # Successfully decompressed
-                        ra.m.st("Successfully Decompressed", str(ra.zipFile), "to:", str(ra.extPath))
-                        return 0
-                else:
-                    # Exit with error if the decompression target directory already exists
-                    ra.m.er("Decompression Target Directory Already Exists")
-                    ra.m.ex("Error")
-                    sys.exit(1)
-            else:
-                # Skip decompression if skip extraction enabled
-                ra.m.n("Skipping Decompression as Requested")
-                return 0
-        else:
-            # Skip decompression if pretend enabled
-            ra.m.n("Skipping Decompression Because We're Pretending")
-            return 0
 
     def getFiles(ra):        
         ra.m.st("Gathering Files Information From Target Archive...")
-        zf = ra.zf
-        # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
-        for r in zf.namelist():
-            if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
-                ra.romList["unSrted"].append(r)
+        with ZipFile(ra.zipFile) as zf:
+            # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
+            for r in zf.namelist():
+                if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
+                    ra.romList["unSrted"].append(r)
 
         #ra.romList["unSrted"] = [ r for r in zf.namelist() if r.lower().endswith(".zip") and not r.startswith('[BIOS]') ]
         
@@ -175,13 +140,13 @@ class romArchive():
     
     ##### Creates sort directories as needed and moves sorted files into directories
     # Executes the sort list, moving the roms to their sort folders    
-    def moveRoms(ra):
+    def prepMove(ra):    
         # Creates the sort directories as needed
         def makeDir(outLocation, srtFolder):
             ra.m.sb("Creating folder", srtFolder, "at extraction path...")
             try:
                 # Attempt to create the directory
-                outLocation.mkdir()
+                outLocation.mkdir(exist_ok=True)
             except Exception as e:
                 # Exit if error
                 ra.m.er("Unable to create sort folder at extraction path", str(e))
@@ -190,11 +155,10 @@ class romArchive():
             else:
                 # If directory create successfully
                 return 0
-                
+
         # Executes the sort list, moving the roms to their sort folders
         ra.m.st("Moving Sorted Roms ...")
         if not ra.pretend:
-            zf = ra.zf
             # Iterate through romList groups skipping the unsorted list
             for romGrp in list(ra.romList.keys())[1:]:
                 # Only process if group is not empty
@@ -204,25 +168,25 @@ class romArchive():
                         # Save the final location to the rom object
                         rom.outLocation = rom.srtLocation
                         #rom.outLocation = ra.extPath.joinpath(rom.srtLocation)
-                        # If the sort directory doesn't exist, create it
+                        #If the sort directory doesn't exist, create it
                         if not rom.srtLocation.is_dir():
                             makeDir(rom.srtLocation, rom.srtRegion)
                         # move the rom to it's destination
-                        if rom.move(zf) == 0: # Move the rom and check for success 
+                        ra.extractQueue.put(rom)
+                        #if rom.move(ra.zipFile) == 0: # Move the rom and check for success 
                             # If successful move to next rom in list
-                            continue
-                        else:
+                        #    continue
+                        #else:
                             # Fail if rom move was not successful
-                            ra.m.er("Failed to move rom to", romGrp)
-                            ra.m.ex("Error")
-                            sys.exit(1)
+                        #    ra.m.er("Failed to move rom to", romGrp)
+                        #    ra.m.ex("Error")
+                        #    sys.exit(1)
                     # Continue to next rom after processing
                     continue       
-            zf.close()
         else:
             ra.m.n("Skipping Rom Move Because We're Pretending")
             return 0
-        
+
     def move(ra):
         if not ra.pretend:
             ra.m.st("Moving Working Directory to Output Destination...")

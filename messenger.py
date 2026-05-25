@@ -1,3 +1,6 @@
+from threading import Lock
+msgLock = Lock()
+
 ##### Handles writing messages to the terminal
 class messenger():
     class c:
@@ -31,7 +34,8 @@ class messenger():
     
     # Prints a preformed message to the console
     def say(msg, *line):
-        print(' '.join(line))
+        with msgLock:
+            print(' '.join(line))
 
     # Forms status messages
     # msg.st( message )

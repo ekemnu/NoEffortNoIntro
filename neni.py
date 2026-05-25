@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.23
+#####   0.24
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -29,6 +29,7 @@
 #####       0.21 Created tests to exercise scrape and sort logic. Fixed scrape and sort bugs these tests found.
 #####       0.22 Refactored romFile() to be a dataclass, scraping logic and romFile performance improvements
 #####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
+#####       0.24 Parrellalize Rom extraction
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
@@ -36,6 +37,9 @@ import sys                      # Used to exit the script
 import shutil                   # Used to move and unzip files and archives
 from pathlib import Path        # Used to perform os independent path manipulation
 from datetime import datetime   # Used to record the date and time script was run
+from zipfile import ZipFile
+from concurrent.futures import ThreadPoolExecutor
+from queue import Queue, Empty
 from messenger import messenger # Used to create terminal status messages during runtime
 from archive import romArchive  # User to manage actions of archives
 
@@ -64,7 +68,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.23')
+    parser.add_argument('--version', action='version', version='NenI 0.24')
     
     # Store the flags as an object
     flags = parser.parse_args()
@@ -117,6 +121,58 @@ def chkTargets(targets, msg):
     # Return the list of full paths to the targets
     return tgtList
 
+def makeDir(outLocation, srtFolder):
+    ra.m.sb("Creating folder", srtFolder, "at extraction path...")
+    try:
+        # Attempt to create the directory
+        outLocation.mkdir(exist_ok=True)
+    except Exception as e:
+        # Exit if error
+        ra.m.er("Unable to create sort folder at extraction path", str(e))
+        ra.m.ex("error")
+        sys.exit(1)
+    else:
+        # If directory create successfully
+        return 0
+
+def threader(archive):
+    ra = archive
+    extractQueue = ra.extractQueue
+
+    class extractWorker():
+        def __init__(thr, zipFile, extractQueue):
+            thr.zipFile      = zipFile
+            thr.extractQueue = extractQueue
+            
+        def run(thr):
+            with ZipFile(thr.zipFile) as zf:
+                while True:
+                    try:
+                        rom = thr.extractQueue.get_nowait()
+                    except Empty:
+                        break
+
+                    try:
+                        if not rom.srtLocation.is_dir():
+                            makeDir(rom.srtLocation, rom.srtRegion)
+
+                        rom.move(zf)
+
+                    finally:
+                        extractQueue.task_done()
+    futures = []            
+    workers = [ extractWorker(ra.zipFile, extractQueue)
+               for _ in range(4) ]
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(worker.run)
+            for worker in workers
+        ]
+
+        for future in futures:
+            future.result()
+
 # Defines the order subroutines are executed
 def mainRoutine():
     now = datetime.now()
@@ -152,7 +208,25 @@ def mainRoutine():
             now.strftime("%m/%d/%Y %H:%M:%S")
         )
         # Processes the archive, extracting it, processing the files, and moving it to the final location
-        archive.process()
+
+        # Gather a list of all files extracted from the target archive
+        archive.getFiles()
+        # Gather information about the extracted files
+        archive.processRoms()
+        # Total the files and scraped tags in each category
+        archive.cntRoms()
+        archive.cntTags()
+        # Move the files to the sort regions
+        archive.prepMove()
+        # Moves the processed archive to output destination
+        archive.move()
+        # threaded move
+        threader(archive)
+        # Writes the audit log documenting changes made to final destination
+        archive.auditLog()
+        # Mark the archive as fully processed
+        archive.markProcessed()
+        
     # Exit the script after successful processing of all archives and files
     m.ex("Successful Completion")
     sys.exit(0)
