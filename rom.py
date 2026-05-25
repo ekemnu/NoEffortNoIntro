@@ -95,7 +95,7 @@ class romFile:
         regionEurWor = rf.romRegion["EurWor"]
         regionWorld  = rf.romRegion["World"]
         regionJapan  = rf.romRegion["Japan"]
-        hasEn = "En" in languageTags or "En-" in languageTags
+        hasEn = "En" in languageTags or any(lt.startswith("En-") for lt in languageTags)
         noLng = not languageTags
 
         rf.m.sb("Sorting rom...")
@@ -120,8 +120,7 @@ class romFile:
         if "Japan" in regionTags:
             otherRegions = [r for r in regionTags if r != "Japan"]
             if not otherRegions:
-                return "Japan"                #for splitTag in rawTag.split(","):
-                #    splitTag = splitTag.strip()
+                return "Japan"
             if any(r in regionEurope for r in otherRegions):
                 if noLng or hasEn:
                     return "Europe"

@@ -247,10 +247,10 @@ class romArchive():
         for tagGrp in list(ra.colTags.keys())[1:]:
             # Check if the group has any tags
             if ra.colTags[tagGrp]:
-                # Deduplicate by using set, saving as a list
+                # Deduplicate and sort by using set, saving as a list
                 tagsSorted = sorted(set(ra.colTags[tagGrp]))
                 # Sort the Deduplicated list 
-                tagsSorted.sort()
+                #tagsSorted.sort()
                 # Saves totals for current tag group to sub dictionary value
                 cntedTags[tagGrp]["Total"] = len(ra.colTags[tagGrp])
                 # For each of the tags in the sorted list
@@ -274,10 +274,10 @@ class romArchive():
             # Determine what the audit log file will be named
             # If release version was specified at runtime, use it
             if ra.relVers:
-                ra.auditFn = "[ " + ra.relVers + " No-Intro Set ]"
+                ra.auditFn = f"[ {ra.relVers} No-Intro Set ]"
             # If no release information was specified, use the target archive name
             else:
-                ra.auditFn = "[ " + ra.zipFnRoot + " No-Intro Set ]"
+                ra.auditFn = f"[ {ra.zipFnRoot} No-Intro Set ]"
             
             # Set the location to write the audit file
             # If we're pretending, set location to be the same as target file
@@ -314,33 +314,33 @@ class romArchive():
                 for tagGrp in list(ra.totals["Tags"])[1:]:
                     # Writes the headers with the total for each of the groups
                     if tagGrp == "regionTags":
-                        auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Region Tags" + '\n')
+                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ')} Region Tags\n")
                     elif tagGrp == "languageTags":
-                        auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Language Tags" + '\n')
+                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ')}  Language Tags\n")
                     elif tagGrp == "miscTags":
-                        auditFile.write(str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ') + " Miscellaneous Tags" + '\n')
+                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ')}  Miscellaneous Tags\n")
                     # For each of the tags in the respective tag groups dictionary, skipping the first key
                     for tag in list(ra.totals["Tags"][tagGrp])[1:]:
                         # Write the count for each tag to the file, right justified to 6 places to the audit file line
-                        auditFile.write(str(ra.totals["Tags"][tagGrp][tag]).rjust(6, ' ') + " " + str(tag) + '\n')
+                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp][tag]).rjust(6, ' ')}  {str(tag)}\n")
                     # Add blank line at end of list for formatting  
-                    auditFile.write('\n')
+                    auditFile.write(f"\n")
                     continue
 
                 # Writes the results of the rom sort
                 for srtGrp in list(ra.romList.keys())[1:]:
                     if ra.romList[srtGrp]:
                         if srtGrp == "UnKwn":
-                            auditFile.write("###  " + str(ra.totals[srtGrp]) + " Files Were Unmatched  ###" + '\n')
+                            auditFile.write(f"###  {str(ra.totals[srtGrp])} Files Were Unmatched  ###\n")
                         else:
-                            auditFile.write("###  " + str(ra.totals[srtGrp]) + " Files Matched the " + str(srtGrp) + " Region  ###" + '\n')
+                            auditFile.write(f"###  {str(ra.totals[srtGrp])} Files Matched the {str(srtGrp)} Region  ###\n")
 
                         for logLn in ra.romList[srtGrp]:
-                            auditFile.write(str(logLn.name) + '\n')
+                            auditFile.write(f"{str(logLn.name)}\n")
                     else:
-                        auditFile.write('\n')
+                        auditFile.write(f"\n")
                         continue
-                    auditFile.write('\n')
+                    auditFile.write(f"\n")
         else:
             ra.m.n("Skipping Audit File Write as Requested...")
         

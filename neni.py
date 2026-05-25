@@ -121,22 +121,25 @@ def chkTargets(targets, msg):
     # Return the list of full paths to the targets
     return tgtList
 
-def makeDir(outLocation, srtFolder):
-    ra.m.sb("Creating folder", srtFolder, "at extraction path...")
+def makeDir(outLocation, srtFolder, msg):
+    ra_m = msg
+    ra_m.sb("Creating folder", srtFolder, "at extraction path...")
     try:
         # Attempt to create the directory
         outLocation.mkdir(exist_ok=True)
     except Exception as e:
         # Exit if error
-        ra.m.er("Unable to create sort folder at extraction path", str(e))
-        ra.m.ex("error")
+        ra_m.er("Unable to create sort folder at extraction path", str(e))
+        ra_m.ex("error")
         sys.exit(1)
     else:
         # If directory create successfully
         return 0
 
-def threader(archive):
+def threader(archive, msg):
     ra = archive
+    ra.m = msg
+
     extractQueue = ra.extractQueue
 
     class extractWorker():
@@ -154,7 +157,7 @@ def threader(archive):
 
                     try:
                         if not rom.srtLocation.is_dir():
-                            makeDir(rom.srtLocation, rom.srtRegion)
+                            makeDir(rom.srtLocation, rom.srtRegion, ra.m)
 
                         rom.move(zf)
 
@@ -221,7 +224,7 @@ def mainRoutine():
         # Moves the processed archive to output destination
         archive.move()
         # threaded move
-        threader(archive)
+        threader(archive, m)
         # Writes the audit log documenting changes made to final destination
         archive.auditLog()
         # Mark the archive as fully processed
