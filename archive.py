@@ -59,7 +59,7 @@ class romArchive():
         ra.cntRoms()
         ra.cntTags()
         # Move the files to the sort regions
-        ra.moveRoms()
+        #ra.moveRoms()
         # Moves the processed archive to output destination
         ra.move()
         # Writes the audit log documenting changes made to final destination

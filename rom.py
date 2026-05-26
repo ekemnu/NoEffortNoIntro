@@ -22,8 +22,7 @@ class romFile:
     )
     romRegions:    ClassVar[list] = list(chain(*romRegion.values()))   # Get a list of all regions in the romRegion dictionary
     reScrapePtrn:  ClassVar[re.Pattern[str]] = re.compile(r'\((?=[^(]*\))(.*?)\)')
-    #reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*')
-    reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*|\s*[+]\s*')
+    reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*')
 
     reLnSplitPtrn: ClassVar[re.Pattern[str]] = re.compile(r'\s*(?:-|\+)\s*')
     reLangPtrn:    ClassVar[re.Pattern[str]] = re.compile(r'^(?:[A-Z][a-z](?:-[A-Za-z]+)?|[A-Z][a-z]\+\s*[A-Z][a-z])$')
@@ -47,9 +46,9 @@ class romFile:
     def scrape(rf):
         rf.m.sb("Gathering tags...")
         rawTags = rf.reScrapePtrn.findall(rf.name)                      # Scrape file name for all occurrences of (***)
-
-        if rawTags:                                                     # If the file has tags
-            for rawTag in rawTags:                                      # For each of the collected tags
+        
+        if rawTags:
+            for rawTag in rawTags:                                                     # If the file has tags
                 for splitTag in rf.reSplitPtrn.split(rawTag):
                     if "DLC" == splitTag:
                         rf.infoTags.append(splitTag)                    # Add it to the miscTags list
