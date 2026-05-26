@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.24
+#####   0.25
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -30,6 +30,7 @@
 #####       0.22 Refactored romFile() to be a dataclass, scraping logic and romFile performance improvements
 #####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
 #####       0.24 Parrellalize Rom extraction
+#####       0.25 
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 
 import argparse                 # Used to parse arguments passed to the script at runtime
@@ -68,7 +69,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.24')
+    parser.add_argument('--version', action='version', version='NenI 0.25')
     
     # Store the flags as an object
     flags = parser.parse_args()

@@ -23,7 +23,6 @@ class romFile:
     romRegions:    ClassVar[list] = list(chain(*romRegion.values()))   # Get a list of all regions in the romRegion dictionary
     reScrapePtrn:  ClassVar[re.Pattern[str]] = re.compile(r'\((?=[^(]*\))(.*?)\)')
     reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*')
-
     reLnSplitPtrn: ClassVar[re.Pattern[str]] = re.compile(r'\s*(?:-|\+)\s*')
     reLangPtrn:    ClassVar[re.Pattern[str]] = re.compile(r'^(?:[A-Z][a-z](?:-[A-Za-z]+)?|[A-Z][a-z]\+\s*[A-Z][a-z])$')
 
@@ -54,6 +53,10 @@ class romFile:
                     if splitTag in rf.romRegions:                       # If the tag can be found in the regions list
                         rf.region.append(splitTag)                      # Add it to the regionTags list
                         continue
+                    if splitTag in rf.romLang:                          # If the tag can be found in the language list
+                        if splitTag not in rf.language:                     # Skip if its a duplicate
+                            rf.language.append(splitTag)                    # Add it to the languageTags list
+                            continue
                     # Does the tag match language tag format?
                     if rf.reLangPtrn.match(splitTag):                   # If the file matches the format of a language tag
                         if splitTag in rf.language:                     # Skip if its a duplicate
