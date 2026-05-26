@@ -32,6 +32,12 @@
 #####       0.24 Parrellalize Rom extraction
 #####       0.25 
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
+#####       0.2x TODO: thread per archive in multi archive workflow
+#####       0.2x TODO: better error handling
+#####       0.2x TODO: make turf work as expected, make electing a langauge possible
+#####       0.2x TODO: simplify count functions
+#####       0.2x TODO: better archive process completion verification
+
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script

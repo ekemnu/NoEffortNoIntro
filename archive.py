@@ -39,14 +39,15 @@ class romArchive():
             quit(1)
         else:
             # If the extension is .zip
-            ra.m.st("Processing Archive", ra.zipFn + "....")
+            m.st("Processing Archive", ra.zipFn + "....")
             # Handle user output destination flag
             if not ra.outDest:
                 # Sets the final destination to be the same as the target archive
-                ra.m.wn("Output Destination Not Specified; Using Source Directory")
-                ra.m.de("outdest not set")
+                m.wn("Output Destination Not Specified; Using Source Directory")
+                m.de("outdest not set")
                 ra.outDest = ra.zipPath
         
+      
     # Processes the current target archive when called
     def process(ra):
         # Decompress the target archive
@@ -68,7 +69,7 @@ class romArchive():
         ra.markProcessed()
 
     def getFiles(ra):        
-        ra.m.st("Gathering Files Information From Target Archive...")
+        m.st("Gathering Files Information From Target Archive...")
         with ZipFile(ra.zipFile) as zf:
             # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
             for r in zf.namelist():
@@ -77,25 +78,25 @@ class romArchive():
         
         if not ra.romList["unSrted"]:
             # If no files were gathered from the extraction path
-            ra.m.er("Unable to Retrieve File Information From Target Archive")
-            ra.m.ei("No Such File or Directory")
-            ra.m.ex("Error")
+            m.er("Unable to Retrieve File Information From Target Archive")
+            m.ei("No Such File or Directory")
+            m.ex("Error")
             sys.exit(1)
         else:
             # Successfully gathered files
-            ra.m.sb("Files Gathered")
+            m.sb("Files Gathered")
             return 0
     
     ##### Iterates through all of the files in the extraction directory and attempts to match them to a region
     def processRoms(ra):
-        ra.m.st("Processing Roms...")
+        m.st("Processing Roms...")
         # For each of the unsorted rom list
         for rom in ra.romList["unSrted"]:
             # If the file is a archive, and is not a bios
-            ra.m.wk(rom)
+            m.wk(rom)
             # Initialize a new instance of a romFile object
             # Send name of rom, name of parent archive, where it was extracted to
-            romObj = romFile(name=rom, parent=ra.zipPath, location=ra.extPath, m=ra.m)
+            romObj = romFile(name=rom, parent=ra.zipPath, location=ra.extPath, m=m)
             # Scrape tags from the working rom
             # Collects the tags into the archive
             ra.collectTags(romObj.scrape())
@@ -104,16 +105,16 @@ class romArchive():
             # Stores the rom to the archive by sorted region
             if romObj.srtRegion == "UnKwn":
                 # Prints warning message with name of unmatched file
-                ra.m.wn("Unable to match", romObj.name)
+                m.wn("Unable to match", romObj.name)
                 # Add rom object to the unknown list
                 ra.romList[romObj.srtRegion].append(romObj)
                 # Prints debug substatement with location of skipped file
-                ra.m.lf(romObj.name)
+                m.lf(romObj.name)
                 # Set the sort location to be the root directory
                 romObj.srtLocation = ra.extPath
             else:
                 # Prints message with name of matched file and sort region
-                ra.m.ma(romObj.name, romObj.srtRegion)
+                m.ma(romObj.name, romObj.srtRegion)
                 # Add rom object to the list by sort region
                 ra.romList[romObj.srtRegion].append(romObj)
                 # Handle user selectable region flag homeRgn
@@ -141,21 +142,21 @@ class romArchive():
     def prepMove(ra):    
         # Creates the sort directories as needed
         def makeDir(outLocation, srtFolder):
-            ra.m.sb("Creating folder", srtFolder, "at extraction path...")
+            m.sb("Creating folder", srtFolder, "at extraction path...")
             try:
                 # Attempt to create the directory
                 outLocation.mkdir(exist_ok=True)
             except Exception as e:
                 # Exit if error
-                ra.m.er("Unable to create sort folder at extraction path", str(e))
-                ra.m.ex("error")
+                m.er("Unable to create sort folder at extraction path", str(e))
+                m.ex("error")
                 sys.exit(1)
             else:
                 # If directory create successfully
                 return 0
 
         # Executes the sort list, moving the roms to their sort folders
-        ra.m.st("Moving Sorted Roms ...")
+        m.st("Moving Sorted Roms ...")
         if not ra.pretend:
             # Iterate through romList groups skipping the unsorted list
             for romGrp in list(ra.romList.keys())[1:]:
@@ -175,18 +176,18 @@ class romArchive():
                         #    continue
                         #else:
                             # Fail if rom move was not successful
-                        #    ra.m.er("Failed to move rom to", romGrp)
-                        #    ra.m.ex("Error")
+                        #    m.er("Failed to move rom to", romGrp)
+                        #    m.ex("Error")
                         #    sys.exit(1)
                     # Continue to next rom after processing
                     continue       
         else:
-            ra.m.n("Skipping Rom Move Because We're Pretending")
+            m.n("Skipping Rom Move Because We're Pretending")
             return 0
 
     def move(ra):
         if not ra.pretend:
-            ra.m.st("Moving Working Directory to Output Destination...")
+            m.st("Moving Working Directory to Output Destination...")
             # Set the output location
             mvLoc = ra.outDest.joinpath(ra.zipFnRoot)
             # If the output location isn't the same as extraction location
@@ -200,15 +201,15 @@ class romArchive():
                 # Set the target archives out destination to the outputed location
                 ra.outDest = mvLoc
                 # Print message notifying user of successful move
-                ra.m.sb("Moved to:", str(ra.outDest))
+                m.sb("Moved to:", str(ra.outDest))
                 return 0
             else:
                  # Skip if extraction and output directory are the same
-                 ra.m.sb("Working Extraction Directory and Destination are Identical, Skipping")
+                 m.sb("Working Extraction Directory and Destination are Identical, Skipping")
                  return 1
         else:
             # Skip if we're pretending
-            ra.m.n("Skipping Output Move Because We're Pretending")
+            m.n("Skipping Output Move Because We're Pretending")
             return 0
     
     ##### Counts all the roms in the rom list
@@ -267,7 +268,7 @@ class romArchive():
     def auditLog(ra):
         # If no audit flag was not set
         if not ra.noAudit:
-            ra.m.st("Writing audit log to output destination...")
+            m.st("Writing audit log to output destination...")
             # Determine what the audit log file will be named
             # If release version was specified at runtime, use it
             if ra.relVers:
@@ -290,7 +291,7 @@ class romArchive():
             # Open the file for writing
             with open(auditFPath, "w") as auditFile:
 
-                ra.m.st("Saving Audit Log to", str(auditFPath) + "...")
+                m.st("Saving Audit Log to", str(auditFPath) + "...")
                 # Write the audit log header information
                 auditFile.write(f"No Effort No Intro\n")
                 auditFile.write(f"   Audit Log\n\n")
@@ -339,7 +340,7 @@ class romArchive():
                         continue
                     auditFile.write(f"\n")
         else:
-            ra.m.n("Skipping Audit File Write as Requested...")
+            m.n("Skipping Audit File Write as Requested...")
         
     # Marks the current working archive as processed
     def markProcessed(ra):

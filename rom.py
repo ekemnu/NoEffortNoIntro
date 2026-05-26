@@ -47,15 +47,15 @@ class romFile:
         rawTags = rf.reScrapePtrn.findall(rf.name)                      # Scrape file name for all occurrences of (***)
         
         if rawTags:
-            for rawTag in rawTags:                                                     # If the file has tags
+            for rawTag in rawTags:                                      # If the file has tags
                 for splitTag in rf.reSplitPtrn.split(rawTag):                 
                     # Is the tag a region tag?
                     if splitTag in rf.romRegions:                       # If the tag can be found in the regions list
                         rf.region.append(splitTag)                      # Add it to the regionTags list
                         continue
                     if splitTag in rf.romLang:                          # If the tag can be found in the language list
-                        if splitTag not in rf.language:                     # Skip if its a duplicate
-                            rf.language.append(splitTag)                    # Add it to the languageTags list
+                        if splitTag not in rf.language:                 # Skip if its a duplicate
+                            rf.language.append(splitTag)                # Add it to the languageTags list
                             continue
                     # Does the tag match language tag format?
                     if rf.reLangPtrn.match(splitTag):                   # If the file matches the format of a language tag
@@ -73,11 +73,11 @@ class romFile:
                         rf.infoTags.append(splitTag)                    # Add it to miscTags vOv
                         continue
                     # If the tag is a PAL varient treat it like a region
-                    if splitTag.startswith("PAL"):                          # If the Tag is a PAL variant
-                        rf.region.append("PAL")                             # Add it to the regionTags list
+                    if splitTag.startswith("PAL"):                      # If the Tag is a PAL variant
+                        rf.region.append("PAL")                         # Add it to the regionTags list
                         continue
                     # If the tag could not be classified
-                    rf.infoTags.append(splitTag)                            # Add it to the miscTags list
+                    rf.infoTags.append(splitTag)                        # Add it to the miscTags list
                     continue
 
         rf.tags = { "unSrted":      rawTags, 
