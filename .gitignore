@@ -9,8 +9,7 @@
 !neni.py
 !rom.py
 !*.py
-
-!README.md
-!.gitignore
 !tests/
 !tests/*.py
+!README.md
+!.gitignore
