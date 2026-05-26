@@ -74,8 +74,6 @@ class romArchive():
             for r in zf.namelist():
                 if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
                     ra.romList["unSrted"].append(r)
-
-        #ra.romList["unSrted"] = [ r for r in zf.namelist() if r.lower().endswith(".zip") and not r.startswith('[BIOS]') ]
         
         if not ra.romList["unSrted"]:
             # If no files were gathered from the extraction path
@@ -167,7 +165,6 @@ class romArchive():
                     for rom in ra.romList[romGrp]:
                         # Save the final location to the rom object
                         rom.outLocation = rom.srtLocation
-                        #rom.outLocation = ra.extPath.joinpath(rom.srtLocation)
                         #If the sort directory doesn't exist, create it
                         if not rom.srtLocation.is_dir():
                             makeDir(rom.srtLocation, rom.srtRegion)

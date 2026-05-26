@@ -61,6 +61,8 @@ SORT_CASES = [
     
     # ── English World Regions → "Europe" ────────────────────────────────
     ("Acheton and Kingdom of Hamil (United Kingdom)",                   "Europe"),  # bare, no lang
+    ("Europe with En-GB (Europe) (En-US, En-GB, fr, de)",               "Europe"),  # bare, no lang
+
     ("Adventure Collection, The (United Kingdom) (Disk 1)",             "Europe"),  # + misc
     ("Dingo Ate My Baby, The (Australia) (En-Au)",                      "Europe"),  # En Region + UnKwn lang
     ("Where the Billionares Go (New Zealand)",                          "Europe"),  # En Region

@@ -85,9 +85,6 @@ def argParser():
 
 ##### Processes targets specified at runtime
 def chkTargets(targets, msg):    
-    #from chkTargets import chkTargetsTEST
-    #tgtList = chkTargetsTEST(targets, msg)
-    #return tgtList
     m = msg
     tgtList = []
     

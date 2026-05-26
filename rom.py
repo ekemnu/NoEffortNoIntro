@@ -49,10 +49,7 @@ class romFile:
         
         if rawTags:
             for rawTag in rawTags:                                                     # If the file has tags
-                for splitTag in rf.reSplitPtrn.split(rawTag):
-                    if "DLC" == splitTag:
-                        rf.infoTags.append(splitTag)                    # Add it to the miscTags list
-                        continue
+                for splitTag in rf.reSplitPtrn.split(rawTag):                 
                     # Is the tag a region tag?
                     if splitTag in rf.romRegions:                       # If the tag can be found in the regions list
                         rf.region.append(splitTag)                      # Add it to the regionTags list
@@ -92,9 +89,9 @@ class romFile:
     # Returns either the sort region or 1 for unmatched.
     # TODO: Properly handle home region and language priorities
     def sort(rf):
-        regionTags = rf.tags["regionTags"]
+        regionTags   = rf.tags["regionTags"]
         languageTags = rf.tags["languageTags"]
-        regionUSA = rf.romRegion["USA"]
+        regionUSA    = rf.romRegion["USA"]
         regionEurope = rf.romRegion["Europe"]
         regionEurWor = rf.romRegion["EurWor"]
         regionWorld  = rf.romRegion["World"]
@@ -106,10 +103,6 @@ class romFile:
         # Attempt to bail out early by matching on master sort regions
         if "USA" in regionTags:
             return "USA"
-        
-        if "Europe" in regionTags or "PAL" in regionTags:
-            if noLng or hasEn:
-                return "Europe"
 
         if "Japan" in regionTags:
             otherRegions = [r for r in regionTags if r != "Japan"]
@@ -125,6 +118,10 @@ class romFile:
                 if noLng or hasEn:
                     return "USA"
             return "Japan"
+        
+        if "Europe" in regionTags or "PAL" in regionTags:
+            if noLng or hasEn:
+                return "Europe"
     
         if "World" in regionTags:
             if hasEn:
@@ -176,7 +173,6 @@ class romFile:
         # Attempt to move the rom to the sorted location
         try:
             rz.extract(rf.name, rf.srtLocation)
-            #rf.path.rename(rf.srtLocation.joinpath(rf.name))
         # Error if unable to move
         except Exception as e:
             rf.m.er("Unable to move", rf.name, "to sort location", rf.srtLocation)
