@@ -10,6 +10,7 @@
 !rom.py
 !*.py
 !tests/
-!tests/*.py
+!tests/test*.py
+!tests/tool*.py
 !README.md
 !.gitignore

@@ -1,1 +1,0 @@
-/home/john/Documents/Code/No Effort No Intro/neni.py
