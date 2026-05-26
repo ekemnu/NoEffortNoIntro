@@ -22,7 +22,9 @@ class romFile:
     )
     romRegions:    ClassVar[list] = list(chain(*romRegion.values()))   # Get a list of all regions in the romRegion dictionary
     reScrapePtrn:  ClassVar[re.Pattern[str]] = re.compile(r'\((?=[^(]*\))(.*?)\)')
-    reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*')
+    #reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*')
+    reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*|\s*[+]\s*')
+
     reLnSplitPtrn: ClassVar[re.Pattern[str]] = re.compile(r'\s*(?:-|\+)\s*')
     reLangPtrn:    ClassVar[re.Pattern[str]] = re.compile(r'^(?:[A-Z][a-z](?:-[A-Za-z]+)?|[A-Z][a-z]\+\s*[A-Z][a-z])$')
 
@@ -49,6 +51,9 @@ class romFile:
         if rawTags:                                                     # If the file has tags
             for rawTag in rawTags:                                      # For each of the collected tags
                 for splitTag in rf.reSplitPtrn.split(rawTag):
+                    if "DLC" == splitTag:
+                        rf.infoTags.append(splitTag)                    # Add it to the miscTags list
+                        continue
                     # Is the tag a region tag?
                     if splitTag in rf.romRegions:                       # If the tag can be found in the regions list
                         rf.region.append(splitTag)                      # Add it to the regionTags list
@@ -69,11 +74,11 @@ class romFile:
                         rf.infoTags.append(splitTag)                    # Add it to miscTags vOv
                         continue
                     # If the tag is a PAL varient treat it like a region
-                    if splitTag.startswith("PAL"):                      # If the Tag is a PAL variant
-                        rf.region.append("PAL")                         # Add it to the regionTags list
+                    if splitTag.startswith("PAL"):                          # If the Tag is a PAL variant
+                        rf.region.append("PAL")                             # Add it to the regionTags list
                         continue
                     # If the tag could not be classified
-                    rf.infoTags.append(splitTag)                        # Add it to the miscTags list
+                    rf.infoTags.append(splitTag)                            # Add it to the miscTags list
                     continue
 
         rf.tags = { "unSrted":      rawTags, 
@@ -81,7 +86,7 @@ class romFile:
                     "languageTags": rf.language,
                     "miscTags":     rf.infoTags }
 
-        rf.m.sb("Tags are:", ' '.join(rf.tags["unSrted"])) 
+        rf.m.sb("Tags are:", *rf.tags["unSrted"]) 
         return rf.tags
 
     # Takes a given romFile and its scraped tags and sorts it into one of the sort regions
@@ -99,16 +104,6 @@ class romFile:
         noLng = not languageTags
 
         rf.m.sb("Sorting rom...")
-        # Try to match on language if no region tags
-        if not regionTags:
-            if noLng:                           # If there are not language tags return unknown
-                return "UnKwn"
-            if hasEn:                           # If there is an english language tag return USA
-                return "USA"
-            elif "Ja" in languageTags:          # If there is a japanese language tag return Japan
-                return "Japan"
-            return "World"                      # If it has any other language tag return World
-        
         # Attempt to bail out early by matching on master sort regions
         if "USA" in regionTags:
             return "USA"
@@ -140,6 +135,16 @@ class romFile:
             if languageTags and not hasEn:
                 return "World"
             return "USA"
+        
+        # Try to match on language if no region tags
+        if not regionTags:
+            if noLng:                           # If there are not language tags return unknown
+                return "UnKwn"
+            if hasEn:                           # If there is an english language tag return USA
+                return "USA"
+            elif "Ja" in languageTags:          # If there is a japanese language tag return Japan
+                return "Japan"
+            return "World"                      # If it has any other language tag return World
         
         # If we weren't able to bail out, match region against master list
         for tag in regionTags:

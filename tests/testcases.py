@@ -20,10 +20,11 @@ Usage in tests:
 # ---------------------------------------------------------------------------
 # Each group is labelled with the sort() branch it exercises.
 
-DEBUG_CASES = [ 
-    ("2375180 - Saimin Arbeit (World) (En,Zh-Hant,Zh-Hans) (Windows)",
-     {"unSrted": ['World', 'En,Zh-Hant,Zh-Hans', 'Windows'], 'regionTags': ['World'], 'languageTags': ['En', 'Zh-Hant', 'Zh', 'Zh-Hans'], 'miscTags': ['Windows']}),
-]
+DEBUG_CASES = [
+    ("Some Game (DLC)",
+     {"unSrted": ['DLC'], 'regionTags': [], 'languageTags': [], 'miscTags': ['DLC']}),
+    ]
+
 
 SORT_CASES = [
 

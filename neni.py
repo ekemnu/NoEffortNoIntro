@@ -162,7 +162,7 @@ def threader(archive, msg):
                         rom.move(zf)
 
                     finally:
-                        extractQueue.task_done()
+                        thr.extractQueue.task_done()
     futures = []            
     workers = [ extractWorker(ra.zipFile, extractQueue)
                for _ in range(4) ]
