@@ -1,7 +1,7 @@
 #####   No Effort No-Intro
 #####	John Loreth
 #####	2026
-#####   0.25
+#####   0.26
 #####
 #####   Process and extracts No-Intro Rom Archives, sorts by region into sub directories
 #####
@@ -31,6 +31,7 @@
 #####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
 #####       0.24 Parrellalize Rom extraction
 #####       0.25 Simplified tag/rom counters by rewriting to use Collections, simplified audit log code, bug fixes
+#####       0.26
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 #####       0.2x TODO: thread per archive in multi archive workflow
 #####       0.2x TODO: better error handling
@@ -73,7 +74,7 @@ def argParser():
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
-    parser.add_argument('--version', action='version', version='NenI 0.25')
+    parser.add_argument('--version', action='version', version='NenI 0.26')
     
     # Store the flags as an object
     flags = parser.parse_args()
