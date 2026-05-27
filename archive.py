@@ -109,8 +109,8 @@ class romArchive():
                 ra.romList[romObj.srtRegion].append(romObj)
                 # Prints debug substatement with location of skipped file
                 ra.m.lf(romObj.name)
-                # Set the sort location to be the root directory
-                romObj.srtLocation = None
+                # If srtLocation is not set, it falls to root extraction dir
+                continue
             else:
                 # Prints message with name of matched file and sort region
                 ra.m.ma(romObj.name, romObj.srtRegion)
@@ -119,7 +119,7 @@ class romArchive():
                 # Handle user selectable region flag homeRgn
                 if ra.homeRgn == romObj.srtRegion:
                     # if sort region is selected region leave in root
-                    romObj.srtLocation = None
+                    continue
                 else:
                     # Set the rom's final location to be a region sort folder
                     romObj.srtLocation = romObj.srtRegion
@@ -261,7 +261,12 @@ class romArchive():
         ra.auditFn = f"[ {ra.relVers or  ra.zipFnRoot} No-Intro Set ]"
 
         # Set the location to write the audit file
-        auditFPath = ra.outDest.joinpath(ra.auditFn)
+         # If we're pretending, set location to be the same as target file
+        if ra.pretend:
+            auditFPath = ra.parentDir.joinpath(ra.auditFn)
+        # If we're not pretending, set it to the output destination
+        else:
+            auditFPath = ra.outDest.joinpath(ra.auditFn)
         
         # Open the file for writing
         ra.m.st("Writing audit log to output destination...")
