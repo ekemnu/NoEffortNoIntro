@@ -56,7 +56,7 @@ def argParser():
     parser = argparse.ArgumentParser( description='Processes given No-Intro archive(s), sorts by region into sub directories',
                         epilog='Written by John Loreth 2024')
     parser.add_argument('targets', nargs='+')
-    parser.add_argument('-a', '--no-audit', action=argparse.BooleanOptionalAction, dest='noAudit',
+    parser.add_argument('-a', '--noaudit', action=argparse.BooleanOptionalAction, dest='noAudit',
                         help='Skips writing audit file')
     parser.add_argument('-o', '--output-destination', action='store', nargs='?', dest='outDest',
                         default=None, help='Specifies a directory to output processed roms')

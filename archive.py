@@ -70,6 +70,10 @@ class romArchive():
     def getFiles(ra):        
         ra.m.st("Gathering Files Information From Target Archive...")
         with ZipFile(ra.zipFPath) as zf:
+            methods = set(info.compress_type for info in zf.infolist())
+            print(methods)
+            exit()
+            
             # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
             for r in zf.namelist():
                 if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
@@ -259,14 +263,9 @@ class romArchive():
         # Determine what the audit log file will be named
         # If release version was specified at runtime, else use target archive name
         ra.auditFn = f"[ {ra.relVers or  ra.zipFnRoot} No-Intro Set ]"
-        
+
         # Set the location to write the audit file
-        # If we're pretending, set location to be the same as target file
-        if ra.pretend:
-            auditFPath = ra.outDest.joinpath(ra.auditFn)
-        # If we're not pretending, set it to the output destination
-        else:
-            auditFPath = ra.outDest.joinpath(ra.auditFn)
+        auditFPath = ra.outDest.joinpath(ra.auditFn)
         
         # Open the file for writing
         ra.m.st("Writing audit log to output destination...")
@@ -312,24 +311,6 @@ class romArchive():
                 # Add blank line at end of list for formatting  
                 auditFile.write(f"\n")
                 continue
-            
-            def old():
-                for tagGrp in list(ra.totals["Tags"])[1:]:
-                    # Writes the headers with the total for each of the groups
-                    if tagGrp == "regionTags":
-                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ')} Region Tags\n")
-                    elif tagGrp == "languageTags":
-                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ')}  Language Tags\n")
-                    elif tagGrp == "miscTags":
-                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp]["Total"]).rjust(6, ' ')}  Miscellaneous Tags\n")
-                    # For each of the tags in the respective tag groups dictionary, skipping the first key
-                    for tag in list(ra.totals["Tags"][tagGrp])[1:]:
-                        # Write the count for each tag to the file, right justified to 6 places to the audit file line
-                        auditFile.write(f"{str(ra.totals["Tags"][tagGrp][tag]).rjust(6, ' ')}  {str(tag)}\n")
-                    # Add blank line at end of list for formatting  
-                    auditFile.write(f"\n")
-                    continue
-
 
             # Writes the results of the rom sort
             for srtGrp in list(ra.romList.keys())[1:]:

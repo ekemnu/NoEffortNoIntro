@@ -23,7 +23,7 @@ class romFile:
     romRegions:    ClassVar[list] = list(chain(*romRegion.values()))   # Get a list of all regions in the romRegion dictionary
     reScrapePtrn:  ClassVar[re.Pattern[str]] = re.compile(r'\((?=[^(]*\))(.*?)\)')
     reSplitPtrn:   ClassVar[re.Pattern[str]] = re.compile(r'\s*,\s*')
-    reLnSplitPtrn: ClassVar[re.Pattern[str]] = re.compile(r'\s*(?:-|\+)\s*')
+    reLnSplitPtrn: ClassVar[re.Pattern[str]] = re.compile(r'\s*\+\s*')
     reLangPtrn:    ClassVar[re.Pattern[str]] = re.compile(r'^(?:[A-Z][a-z](?:-[A-Za-z]+)?|[A-Z][a-z]\+\s*[A-Z][a-z])$')
 
     name:        str                                            # File name of the file
