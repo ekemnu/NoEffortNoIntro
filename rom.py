@@ -28,15 +28,14 @@ class romFile:
 
     name:        str                                            # File name of the file
     parent:      Path                                           # Parent archive the file was extracted from
-    location:    Path                                           # Stores in what directory the file is located
     m:           object                                         # Messenger for writing lines to the terminal
     path:        Path = field(init=False)                       # Stores full path to file
     srtLocation: str  = field(default="",  init=False)          # Directory relative to root ext dir to which the file should be moved
-    outLocation: Path = field(default="",  init=False)          # Final location of sorted rom
+    outLocation: Path = field(init=False)                       # Final location of sorted rom
     region:      list = field(default_factory=list, init=False) # Region(s) as scraped from file's tags
     language:    list = field(default_factory=list, init=False) # Language(s) as scraped from the file's tags
     infoTags:    list = field(default_factory=list, init=False) # Misc tag(s) scraped from the file's tags
-    srtRegion:   str  = field(init=False)          # Stores sort region determined by the sort method
+    srtRegion:   str  = field(init=False)                       # Stores sort region determined by the sort method
     srtLanguage: str  = field(default="",  init=False)          # Stores sort language determined by the sort method
     tags:        dict = field(default_factory=dict, init=False) # Stores a list of all the tags from the scrape method
 

@@ -69,11 +69,7 @@ class romArchive():
 
     def getFiles(ra):        
         ra.m.st("Gathering Files Information From Target Archive...")
-        with ZipFile(ra.zipFPath) as zf:
-            methods = set(info.compress_type for info in zf.infolist())
-            print(methods)
-            exit()
-            
+        with ZipFile(ra.zipFPath) as zf:            
             # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
             for r in zf.namelist():
                 if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
@@ -99,7 +95,7 @@ class romArchive():
             ra.m.wk(rom)
             # Initialize a new instance of a romFile object
             # Send name of rom, name of parent archive, where it was extracted to
-            romObj = romFile(name=rom, parent=ra.parentDir, location=ra.zipFPath, m=ra.m)
+            romObj = romFile(name=rom, parent=ra.zipFPath, m=ra.m)
             # Scrape tags from the working rom
             # Collects the tags into the archive
             ra.collectTags(romObj.scrape())
