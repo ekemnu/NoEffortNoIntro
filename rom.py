@@ -31,13 +31,13 @@ class romFile:
     location:    Path                                           # Stores in what directory the file is located
     m:           object                                         # Messenger for writing lines to the terminal
     path:        Path = field(init=False)                       # Stores full path to file
-    srtLocation: str = field(default="",  init=False)           # Directory relative to root ext dir to which the file should be moved
-    outLocation: str = field(default="",  init=False)           # Final location of sorted rom
+    srtLocation: str  = field(default="",  init=False)          # Directory relative to root ext dir to which the file should be moved
+    outLocation: Path = field(default="",  init=False)          # Final location of sorted rom
     region:      list = field(default_factory=list, init=False) # Region(s) as scraped from file's tags
     language:    list = field(default_factory=list, init=False) # Language(s) as scraped from the file's tags
     infoTags:    list = field(default_factory=list, init=False) # Misc tag(s) scraped from the file's tags
-    srtRegion:   str = field(default="",  init=False)           # Stores sort region determined by the sort method
-    srtLanguage: str = field(default="",  init=False)           # Stores sort language determined by the sort method
+    srtRegion:   str  = field(init=False)          # Stores sort region determined by the sort method
+    srtLanguage: str  = field(default="",  init=False)          # Stores sort language determined by the sort method
     tags:        dict = field(default_factory=dict, init=False) # Stores a list of all the tags from the scrape method
 
     
@@ -175,10 +175,10 @@ class romFile:
         rf.path = rf.location / rf.name
         # Attempt to move the rom to the sorted location
         try:
-            rz.extract(rf.name, rf.srtLocation)
+            rz.extract(rf.name, rf.outLocation)
         # Error if unable to move
         except Exception as e:
-            rf.m.er("Unable to move", rf.name, "to sort location", rf.srtLocation)
+            rf.m.er("Unable to move", rf.name, "to sort location", rf.outLocation)
             rf.m.ex("Error")
             sys.exit(1)
         else:

@@ -9,16 +9,14 @@ from rom import romFile
 ##### Stores information about the rom collection, and performs operations on it
 class romArchive():
     ##### Variables that are specific to the instanced object
-    def __init__(ra, zipFile, extTo, outDest, relVers, homeRgn, ptend, sXtrct, noAudit, msg, exeTime):
+    def __init__(ra, zipFPath, outDest, relVers, homeRgn, ptend, sXtrct, noAudit, msg, exeTime):
         ra.m         = msg                          # Messenger for writing lines to terminal
-        ra.zipFile   = zipFile                      # Stores the full path to the target archive
-        ra.zipPath   = zipFile.parent               # Stores the directory in which the target archive is located
-        ra.zipFn     = zipFile.name                 # Stores string full name of the target archive
-        ra.zipFnRoot = zipFile.stem                 # Stores string with the name of the target archive without extension
-        ra.zipFnExt  = zipFile.suffix               # Stores string with the extension of the target archive
-        ra.extTo     = extTo                        # Stores a custom location to extract target
-        ra.extPath   = extTo.joinpath(ra.zipFnRoot) # Stores the extraction target directory
-        ra.outDest   = outDest                      # Stores the final destination of the processed roms
+        ra.zipFPath  = zipFPath                     # Stores the full path of the target archive
+        ra.parentDir = zipFPath.parent              # Stores the directory in which the target archive is located
+        ra.zipFn     = zipFPath.name                # Stores string full name of the target archive
+        ra.zipFnRoot = zipFPath.stem                # Stores string with the name of the target archive without extension
+        ra.zipFnExt  = zipFPath.suffix              # Stores string with the extension of the target archive
+        ra.outDest   = outDest or zipFPath          # Stores the parent dir of the processed roms final destination
         ra.relVers   = str(relVers)                 # Stores No-Intro release version information
         ra.exeTime   = exeTime                      # Time execution started
         ra.romList = {      # Stores a list of all decompressed files in the extraction directory
@@ -42,13 +40,14 @@ class romArchive():
             # If the extension is .zip
             ra.m.st("Processing Archive", ra.zipFn + "....")
             # Handle user output destination flag
-            if not ra.outDest:
+            if ra.outDest:
+                ra.outDest = ra.outDest.joinpath(ra.zipFnRoot)
+            else:
                 # Sets the final destination to be the same as the target archive
                 ra.m.wn("Output Destination Not Specified; Using Source Directory")
                 ra.m.de("outdest not set")
-                ra.outDest = ra.zipPath
-        
-      
+                ra.outDest = ra.parentDir.joinpath(ra.zipFnRoot)
+            
     # Processes the current target archive when called
     def process(ra):
         # Decompress the target archive
@@ -71,7 +70,7 @@ class romArchive():
 
     def getFiles(ra):        
         ra.m.st("Gathering Files Information From Target Archive...")
-        with ZipFile(ra.zipFile) as zf:
+        with ZipFile(ra.zipFPath) as zf:
             # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
             for r in zf.namelist():
                 if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
@@ -97,7 +96,7 @@ class romArchive():
             ra.m.wk(rom)
             # Initialize a new instance of a romFile object
             # Send name of rom, name of parent archive, where it was extracted to
-            romObj = romFile(name=rom, parent=ra.zipPath, location=ra.extPath, m=ra.m)
+            romObj = romFile(name=rom, parent=ra.parentDir, location=ra.zipFPath, m=ra.m)
             # Scrape tags from the working rom
             # Collects the tags into the archive
             ra.collectTags(romObj.scrape())
@@ -112,7 +111,7 @@ class romArchive():
                 # Prints debug substatement with location of skipped file
                 ra.m.lf(romObj.name)
                 # Set the sort location to be the root directory
-                romObj.srtLocation = ra.extPath
+                romObj.srtLocation = None
             else:
                 # Prints message with name of matched file and sort region
                 ra.m.ma(romObj.name, romObj.srtRegion)
@@ -121,10 +120,10 @@ class romArchive():
                 # Handle user selectable region flag homeRgn
                 if ra.homeRgn == romObj.srtRegion:
                     # if sort region is selected region leave in root
-                    romObj.srtLocation = ra.extPath
+                    romObj.srtLocation = None
                 else:
                     # Set the rom's final location to be a region sort folder
-                    romObj.srtLocation = ra.extPath.joinpath(romObj.srtRegion)
+                    romObj.srtLocation = romObj.srtRegion
             continue
         return 0
 
@@ -143,7 +142,7 @@ class romArchive():
     def prepMove(ra):    
         # Creates the sort directories as needed
         def makeDir(outLocation, srtFolder):
-            ra.m.sb("Creating folder", srtFolder, "at extraction path...")
+            ra.m.sb("Creating location", str(outLocation), "at extraction path...")
             try:
                 # Attempt to create the directory
                 outLocation.mkdir(exist_ok=True)
@@ -166,13 +165,16 @@ class romArchive():
                     # Iterate through the romFile registry of object instances
                     for rom in ra.romList[romGrp]:
                         # Save the final location to the rom object
-                        rom.outLocation = rom.srtLocation
+                        if rom.srtLocation:
+                            rom.outLocation = ra.outDest.joinpath(rom.srtLocation)
+                        else:
+                            rom.outLocation = ra.outDest
                         #If the sort directory doesn't exist, create it
-                        if not rom.srtLocation.is_dir():
-                            makeDir(rom.srtLocation, rom.srtRegion)
+                        if not rom.outLocation.is_dir():
+                            makeDir(rom.outLocation, rom.srtRegion)
                         # move the rom to it's destination
                         ra.extractQueue.put(rom)
-                        #if rom.move(ra.zipFile) == 0: # Move the rom and check for success 
+                        #if rom.move(ra.zipFPath) == 0: # Move the rom and check for success 
                             # If successful move to next rom in list
                         #    continue
                         #else:
@@ -192,13 +194,13 @@ class romArchive():
             # Set the output location
             mvLoc = ra.outDest.joinpath(ra.zipFnRoot)
             # If the output location isn't the same as extraction location
-            if mvLoc != ra.extPath:
+            if mvLoc != ra.outDest:
                 # If the output location doesn't exist
                 if not ra.outDest.is_dir():
                     # Create the output location
                     ra.outDest.mkdir()
                 # Move the working directory to the final destination
-                ra.extPath.replace(mvLoc)
+                ra.outDest.replace(mvLoc)
                 # Set the target archives out destination to the outputed location
                 ra.outDest = mvLoc
                 # Print message notifying user of successful move
@@ -242,103 +244,77 @@ class romArchive():
         # Saves the tag counts to the archive instance
         ra.totals["Tags"] = cntedTags
         return 0
-
-    def cntRomsOLD(ra):
-        # Create a temporary list to hold the rom counts
-        auditRomsCnted = []                                         
-        # Get a count of roms on each of the sort lists
-        for cntRomGrp in list(ra.romList.keys())[1:]:           # For each sort groups, skipping the unsorted list
-            auditRomsCnted.append(cntRomGrp)                    # Add the sort group label to the list
-            auditRomsCnted.append(len(ra.romList[cntRomGrp]))   # count the items and add it after the label
-        # Create a dictionary to save the counts
-        # the first and every other as keys, second and every other as values
-        auditRomsTotals = { grp:ttl for (grp,ttl) in zip(auditRomsCnted[::2], auditRomsCnted[1::2])}   
-        # Save the total number of roms        
-        auditRomsTotals["Total"] = sum(auditRomsCnted[1::2])
-        # Save the totals to the archive's object
-        ra.totals = auditRomsTotals
-        return 0
-    
-    ##### Takes a dictionary of collected tags and saves a dictionary with sorted tags, totals 
-    # input format: colTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] } 
-    def cntTagsOLD(ra):
-        # Format:
-        # cntedTags = { "Total": 0, "regionTags": { "regionTags": 0, "tagTotals": [ [], [] ] },
-        #                          "languageTags": { "languageTags": 0, "tagTotals": [ [], [] ] },
-        #                          "miscTags": { "miscTags": 0, "tagTotals": [ [], [] ] } }
-
-        cntedTags = { "Total": 0, "regionTags": { "Total": 0 }, "languageTags": { "Total": 0 }, "miscTags": { "Total": 0 } }
-        cntedTags["Total"] = len(ra.colTags["unSrted"])                # Get the total number of tags scraped from all files
-        
-        ##### Iterate through the collected tags, totaling them
-        # For each of the categories, skipping the first
-        for tagGrp in list(ra.colTags.keys())[1:]:
-            # Check if the group has any tags
-            if ra.colTags[tagGrp]:
-                # Deduplicate and sort by using set, saving as a list
-                tagsSorted = sorted(set(ra.colTags[tagGrp]))
-                # Sort the Deduplicated list 
-                #tagsSorted.sort()
-                # Saves totals for current tag group to sub dictionary value
-                cntedTags[tagGrp]["Total"] = len(ra.colTags[tagGrp])
-                # For each of the tags in the sorted list
-                for tag in tagsSorted:
-                    # Count occurrences of tag in collection and append to list
-                    tagCnt = ra.colTags[tagGrp].count(tag)
-                    # Append tag to cntedTags dictionary
-                    cntedTags[tagGrp][tag] = tagCnt
-            # Skip if tag group has no tags
-            else: 
-                continue
-        # Save the tag totals so the archive's object
-        ra.totals["Tags"] = cntedTags
-        return 0
     
     #### Records actions taken by the script writes them to a file in the output directory
     def auditLog(ra):
-        # If no audit flag was not set
-        if not ra.noAudit:
-            ra.m.st("Writing audit log to output destination...")
-            # Determine what the audit log file will be named
-            # If release version was specified at runtime, use it
-            if ra.relVers:
-                ra.auditFn = f"[ {ra.relVers} No-Intro Set ]"
-            # If no release information was specified, use the target archive name
-            else:
-                ra.auditFn = f"[ {ra.zipFnRoot} No-Intro Set ]"
+        # Skip audit file write if --no-audit flag was set
+        if ra.noAudit:
+            ra.m.n("Skipping write of the audit log as requested...")
+            return True
+        
+        tagGroups = {
+            "regionTags":   "Region Tags",
+            "languageTags": "Language Tags",
+            "miscTags":     "Miscellaneous Tags" }   
+
+        # Determine what the audit log file will be named
+        # If release version was specified at runtime, else use target archive name
+        ra.auditFn = f"[ {ra.relVers or  ra.zipFnRoot} No-Intro Set ]"
+        
+        # Set the location to write the audit file
+        # If we're pretending, set location to be the same as target file
+        if ra.pretend:
+            auditFPath = ra.outDest.joinpath(ra.auditFn)
+        # If we're not pretending, set it to the output destination
+        else:
+            auditFPath = ra.outDest.joinpath(ra.auditFn)
+        
+        # Open the file for writing
+        ra.m.st("Writing audit log to output destination...")
+        with open(auditFPath, "w") as auditFile:
+
+            ra.m.st("Saving Audit Log to", str(auditFPath) + "...")
+            # Write the audit log header information
+            auditFile.write(f"No Effort No Intro\n")
+            auditFile.write(f"   Audit Log\n\n")
+            auditFile.write(f"Created on:    {ra.exeTime}\n")
+            auditFile.write(f"Processed:     {ra.zipFPath}\n")
+            auditFile.write(f"Processed to:  {ra.outDest}\n")
+            auditFile.write(f"Total Files:   {ra.totals["Total"]}\n\n")
+
+            # Process the log buffer and write it to the audit file
+            # Writes the collected tags and totals to file:
+            # romTotals > Tags > regionTags > tagTotals  
+            #rom totals is:  'Tags': {'Total': 6, 
+            #'regionTags': {'regionTags': 2, 'tagTotals': [['Japan', 'USA'], [1, 1]]}, 'languageTags': {'languageTags': 5, 'tagTotals': [['De', 'En', 'Fr', 'Ja'], [1, 1, 1, 1]]}, 'miscTags': {'miscTags': 3, 'tagTotals': [['Beta', 'proto', 'test'], [1, 1, 1]]}}}
             
-            # Set the location to write the audit file
-            # If we're pretending, set location to be the same as target file
-            if ra.pretend:
-                auditFPath = ra.zipPath.joinpath(ra.auditFn)
-            # If we're not pretending, set it to the output destination
-            else:
-                auditFPath = ra.outDest.joinpath(ra.zipFnRoot, ra.auditFn)
-            # Check if file already exists
-            if auditFPath.is_file():
-                # Remove file if it already exists
-                auditFPath.unlink()
-            # Open the file for writing
-            with open(auditFPath, "w") as auditFile:
+            # Writes the section header to the file
+            auditFile.write(f"### {ra.totals["Tags"]["Total"]} Tags Were Scraped From File Names  ###\n")
+            
+            tgsHeader = {
+                "regionTags":   "Region Tags",
+                "languageTags": "Language Tags",
+                "miscTags":     "Miscellaneous Tags",
+                "UnKwn":       "Unknown Tags"}   
+            
+            ### TAG OUTPUT ###
+            # Iterates through each of the tag groups in the romTotals tag dictionary, skipping "Totals"
+            tagTotals = ra.totals["Tags"]
+            for grp in list(tagTotals)[1:]:
+                tagTotGrp = tagTotals[grp]
 
-                ra.m.st("Saving Audit Log to", str(auditFPath) + "...")
-                # Write the audit log header information
-                auditFile.write(f"No Effort No Intro\n")
-                auditFile.write(f"   Audit Log\n\n")
-                auditFile.write(f"Created on:    {ra.exeTime}\n")
-                auditFile.write(f"Processed:     {ra.zipFile}\n")
-                auditFile.write(f"Processed to:  {ra.outDest}\n")
-                auditFile.write(f"Total Files:   {ra.totals["Total"]}\n\n")
-
-                # Process the log buffer and write it to the audit file
-                # Writes the collected tags and totals to file:
-                # romTotals > Tags > regionTags > tagTotals  
-                #rom totals is:  'Tags': {'Total': 6, 
-                #'regionTags': {'regionTags': 2, 'tagTotals': [['Japan', 'USA'], [1, 1]]}, 'languageTags': {'languageTags': 5, 'tagTotals': [['De', 'En', 'Fr', 'Ja'], [1, 1, 1, 1]]}, 'miscTags': {'miscTags': 3, 'tagTotals': [['Beta', 'proto', 'test'], [1, 1, 1]]}}}
-
-                # Writes the section header to the file
-                auditFile.write(f"### {ra.totals["Tags"]["Total"]} Tags Were Scraped From File Names  ###\n")
-                # Iterates through each of the tag groups in the romTotals tag dictionary
+                # Writes the headers with the total for each of the groups
+                auditFile.write(f"{str(tagTotGrp["Total"]).rjust(6, ' ')}  {tgsHeader[grp]} \n")
+                
+                # For each of the tags in the respective tag groups dictionary, skipping the first key
+                for tag in list(tagTotGrp)[1:]:
+                        # Write the count for each tag to the file, right justified to 6 places to the audit file line
+                        auditFile.write(f"{str(tagTotGrp[tag]).rjust(6, ' ')}  {str(tag)}\n")
+                # Add blank line at end of list for formatting  
+                auditFile.write(f"\n")
+                continue
+            
+            def old():
                 for tagGrp in list(ra.totals["Tags"])[1:]:
                     # Writes the headers with the total for each of the groups
                     if tagGrp == "regionTags":
@@ -355,22 +331,21 @@ class romArchive():
                     auditFile.write(f"\n")
                     continue
 
-                # Writes the results of the rom sort
-                for srtGrp in list(ra.romList.keys())[1:]:
-                    if ra.romList[srtGrp]:
-                        if srtGrp == "UnKwn":
-                            auditFile.write(f"###  {str(ra.totals[srtGrp])} Files Were Unmatched  ###\n")
-                        else:
-                            auditFile.write(f"###  {str(ra.totals[srtGrp])} Files Matched the {str(srtGrp)} Region  ###\n")
 
-                        for logLn in ra.romList[srtGrp]:
-                            auditFile.write(f"{str(logLn.name)}\n")
+            # Writes the results of the rom sort
+            for srtGrp in list(ra.romList.keys())[1:]:
+                if ra.romList[srtGrp]:
+                    if srtGrp == "UnKwn":
+                        auditFile.write(f"###  {str(ra.totals[srtGrp])} Files Were Unmatched  ###\n")
                     else:
-                        auditFile.write(f"\n")
-                        continue
+                        auditFile.write(f"###  {str(ra.totals[srtGrp])} Files Matched the {str(srtGrp)} Region  ###\n")
+
+                    for logLn in ra.romList[srtGrp]:
+                        auditFile.write(f"{str(logLn.name)}\n")
+                else:
                     auditFile.write(f"\n")
-        else:
-            ra.m.n("Skipping Audit File Write as Requested...")
+                    continue
+                auditFile.write(f"\n")
         
     # Marks the current working archive as processed
     def markProcessed(ra):

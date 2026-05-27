@@ -30,13 +30,16 @@
 #####       0.22 Refactored romFile() to be a dataclass, scraping logic and romFile performance improvements
 #####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
 #####       0.24 Parrellalize Rom extraction
-#####       0.25 
+#####       0.25 Simplified tag/rom counters by rewriting to use Collections, simplified audit log code, bug fixes
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 #####       0.2x TODO: thread per archive in multi archive workflow
 #####       0.2x TODO: better error handling
 #####       0.2x TODO: make turf work as expected, make electing a langauge possible
 #####       0.2x TODO: simplify count functions
 #####       0.2x TODO: better archive process completion verification
+#####       0.2x TODO: Per-archive message buffer and messenger thread 
+#####       0.2x TODO: store rom objected sorted for dest enabling thread per folder
+
 
 
 import argparse                 # Used to parse arguments passed to the script at runtime
@@ -55,10 +58,10 @@ def argParser():
     parser = argparse.ArgumentParser( description='Processes given No-Intro archive(s), sorts by region into sub directories',
                         epilog='Written by John Loreth 2024')
     parser.add_argument('targets', nargs='+')
-    parser.add_argument('-a', '--audit', action=argparse.BooleanOptionalAction, dest='noAudit',
+    parser.add_argument('-a', '--no-audit', action=argparse.BooleanOptionalAction, dest='noAudit',
                         help='Skips writing audit file')
-    parser.add_argument('-d', '--destination', action='store', nargs='?', dest='outDest',
-                        help='Specifies an output directory for processed roms')
+    parser.add_argument('-o', '--output-destination', action='store', nargs='?', dest='outDest',
+                        default=None, help='Specifies a directory to output processed roms')
     parser.add_argument('--debug', action=argparse.BooleanOptionalAction,
                         help='Prints debug messages to the console')
     parser.add_argument('-t', '--home-turf', action='store', nargs='?',
@@ -66,11 +69,9 @@ def argParser():
                         help='Specifies the home sort region (default: USA)')
     parser.add_argument('-p', '--pretend', action=argparse.BooleanOptionalAction, dest='ptend',
                         help='Runs the script without making any changes')
-    parser.add_argument('-e', '--extract-to', action='store', nargs='?',
-                        default='/tmp', dest='extTo',
-                        help='Specifies a target temporary working directory for extraction (default: /tmp)')
     parser.add_argument('-r', '--release', action='store', dest='relVers',
                         help='Specify No-Intro release information to include after processing')
+    #TODO make this for pointing to an already extracted dir of no-intro roms, x implies no o
     parser.add_argument('-x', '--skip-extraction', action=argparse.BooleanOptionalAction, dest='sXtrct',
                         help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
@@ -79,9 +80,6 @@ def argParser():
     
     # Store the flags as an object
     flags = parser.parse_args()
-    # If an extraction dir has been specified save the absolute path
-    if flags.extTo:
-        flags.extTo = Path(flags.extTo) 
     # If the final output destination has been given save absolute path
     if flags.outDest:
         flags.outDest = Path(flags.outDest)
@@ -143,7 +141,6 @@ def makeDir(outLocation, srtFolder, msg):
 def threader(archive, msg):
     ra = archive
     ra.m = msg
-
     extractQueue = ra.extractQueue
 
     class extractWorker():
@@ -160,15 +157,12 @@ def threader(archive, msg):
                         break
 
                     try:
-                        if not rom.srtLocation.is_dir():
-                            makeDir(rom.srtLocation, rom.srtRegion, ra.m)
-
                         rom.move(zf)
 
                     finally:
                         thr.extractQueue.task_done()
     futures = []            
-    workers = [ extractWorker(ra.zipFile, extractQueue)
+    workers = [ extractWorker(ra.zipFPath, extractQueue)
                for _ in range(4) ]
 
     with ThreadPoolExecutor(max_workers=4) as executor:
@@ -195,8 +189,6 @@ def mainRoutine():
         archive = romArchive(
             # Stores the full path of the target archive
             target,
-            # Sets the user defined extraction location
-            flags.extTo,
             # Sets the user defined processed output destination
             flags.outDest, 
             # Sets the No-Intro release version information about the archive
@@ -226,7 +218,7 @@ def mainRoutine():
         # Move the files to the sort regions
         archive.prepMove()
         # Moves the processed archive to output destination
-        archive.move()
+        #archive.move()
         # threaded move
         threader(archive, m)
         # Writes the audit log documenting changes made to final destination
