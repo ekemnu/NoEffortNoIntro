@@ -38,9 +38,6 @@
 #####       0.2x TODO: simplify count functions
 #####       0.2x TODO: better archive process completion verification
 #####       0.2x TODO: Per-archive message buffer and messenger thread 
-#####       0.2x TODO: store rom objected sorted for dest enabling thread per folder
-
-
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
@@ -122,21 +119,6 @@ def chkTargets(targets, msg):
             sys.exit(1)
     # Return the list of full paths to the targets
     return tgtList
-
-def makeDir(outLocation, srtFolder, msg):
-    ra_m = msg
-    ra_m.sb("Creating folder", srtFolder, "at extraction path...")
-    try:
-        # Attempt to create the directory
-        outLocation.mkdir(exist_ok=True)
-    except Exception as e:
-        # Exit if error
-        ra_m.er("Unable to create sort folder at extraction path", str(e))
-        ra_m.ex("error")
-        sys.exit(1)
-    else:
-        # If directory create successfully
-        return 0
 
 def threader(archive, msg):
     ra = archive

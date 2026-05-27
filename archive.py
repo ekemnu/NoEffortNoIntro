@@ -1,9 +1,8 @@
 import sys                      # Used to exit the script
-from pathlib import Path        # Used to perform os independent path manipulation
-from collections import Counter
-from zipfile import ZipFile
-from queue import Queue
-from rom import romFile
+from collections import Counter # Used to the roms and tags in the target
+from zipfile import ZipFile     # Used to manipulate archives
+from queue import Queue         # Used to manage threader queues
+from rom import romFile         # Used to store roms as objects
 
 
 ##### Stores information about the rom collection, and performs operations on it

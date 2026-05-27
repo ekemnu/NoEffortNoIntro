@@ -171,8 +171,8 @@ class romFile:
     ##### Move the rom to the sorted location
     def move(rf, zipFile):
         rz = zipFile
-        # Creates fully qualified path to file
-        rf.path = rf.location / rf.name
+        # Stores fully qualified path to file afer extraction
+        rf.path = rf.outLocation.joinpath(rf.name)
         # Attempt to move the rom to the sorted location
         try:
             rz.extract(rf.name, rf.outLocation)
