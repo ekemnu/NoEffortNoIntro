@@ -36,7 +36,6 @@
 #####       0.2x TODO: thread per archive in multi archive workflow
 #####       0.2x TODO: better error handling
 #####       0.2x TODO: make turf work as expected, make electing a langauge possible
-#####       0.2x TODO: simplify count functions
 #####       0.2x TODO: better archive process completion verification
 #####       0.2x TODO: Per-archive message buffer and messenger thread 
 
@@ -86,24 +85,27 @@ def argParser():
         flags.sXtrct = True
     return flags
 
-##### Processes targets specified at runtime
-def chkTargets(targets, msg):    
+def chkTargets(targets, sXtrct, msg):    
     m = msg
     tgtList = []
     
-    m.st("Checking target archive...")
+    m.st("Checking target(s)...")
     for target in targets:
         target = Path(target)
+        # Target will be a directory of individual rom files
+        if sXtrct:
+            tgtList.extend(target.glob('*.zip', case_sensitive=None))
+        
         # Check to see if the target is a file or directory
         # Check to see if target is a valid file
-        if target.is_file():
+        if target.is_file() and target.suffix.lower == ".zip":
             # Target was a file, add it to the target list
             m.de("is file")
             tgtList.append(target.resolve())
             continue
         # If the target wasn't a file, was it a directory?
         elif target.is_dir():
-            tgtList.extend([ f for f in target.glob('*.zip', case_sensitive=None) ])
+            tgtList.extend( f.resolve() for f in target.glob('*.zip', case_sensitive=None) )
             m.de("is dir")
             # Target is a directory, scan it for archives
             m.st("Gathering Archives From Source Directory...")
@@ -111,7 +113,7 @@ def chkTargets(targets, msg):
                 m.st("Discovered", tgtFile.name, "in Target Directory")
             continue
         else:
-            # Error if the target was neither a file or directory
+            # Error if the targa([ f et was neither a file or directory
             m.er("Target File or Directory Cannot Be Found")
             m.ei("Please supply a valid path to either a single, or a directory with No-Intro archives and run NeNi again")
             m.ei("  Ex: $ neni /home/user/Downloads/archive.zip")
@@ -166,7 +168,7 @@ def mainRoutine():
     m = messenger(flags.debug, flags.verbose)
     # Set the target(s) and returns absolute path(s) and then
     # iterates through all archives that were passed to the script
-    for target in chkTargets(flags.targets, m):
+    for target in chkTargets(flags.targets, flags.sXtrct, m):
         m.st("Working on target archive <", target.name, ">...")
         # Initializes target archive object with user preferences
         archive = romArchive(
