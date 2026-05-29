@@ -94,32 +94,36 @@ def chkTargets(targets, sXtrct, msg):
         target = Path(target)
         # Target will be a directory of individual rom files
         if sXtrct:
-            tgtList.extend(target.glob('*.zip', case_sensitive=None))
+            tgtList = target
+            return tgtList
         
         # Check to see if the target is a file or directory
         # Check to see if target is a valid file
-        if target.is_file() and target.suffix.lower == ".zip":
+        if target.is_file():
             # Target was a file, add it to the target list
-            m.de("is file")
             tgtList.append(target.resolve())
             continue
         # If the target wasn't a file, was it a directory?
         elif target.is_dir():
             tgtList.extend( f.resolve() for f in target.glob('*.zip', case_sensitive=None) )
-            m.de("is dir")
             # Target is a directory, scan it for archives
             m.st("Gathering Archives From Source Directory...")
             for tgtFile in tgtList:
                 m.st("Discovered", tgtFile.name, "in Target Directory")
             continue
-        else:
-            # Error if the targa([ f et was neither a file or directory
-            m.er("Target File or Directory Cannot Be Found")
-            m.ei("Please supply a valid path to either a single, or a directory with No-Intro archives and run NeNi again")
-            m.ei("  Ex: $ neni /home/user/Downloads/archive.zip")
-            m.ei("  or: $ neni /home/user/Downloads/NoIntroArchives")
-            m.ex("Error")
-            sys.exit(1)
+        
+    try:
+        tgtList
+    
+    except UnboundLocalError as e:
+        # Error if no archives could be found
+        m.er("Target File or Directory Cannot Be Found")
+        m.ei("Please supply a valid path to either a single, or a directory with No-Intro archives and run NeNi again")
+        m.ei("  Ex: $ neni /home/user/Downloads/archive.zip")
+        m.ei("  or: $ neni /home/user/Downloads/NoIntroArchives")
+        m.ex("Error")
+        #sys.exit(1)
+    
     # Return the list of full paths to the targets
     return tgtList
 

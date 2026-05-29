@@ -68,7 +68,7 @@ class romArchive():
         ra.markProcessed()
 
     def getFiles(ra):        
-        ra.m.st("Gathering Files Information From Target Archive...")
+        ra.m.st("Gathering Files Information From Target Archive(s)...")
         with ZipFile(ra.zipFPath) as zf:            
             # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
             for r in zf.namelist():
