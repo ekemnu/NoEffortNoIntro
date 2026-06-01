@@ -172,6 +172,11 @@ def mainRoutine():
     m = messenger(flags.debug, flags.verbose)
     # Set the target(s) and returns absolute path(s) and then
     # iterates through all archives that were passed to the script
+    
+    ### TODO to match new chkTargets, save a set of romArchives that have been created and only create if not a duplicate
+    ###      if there is a duplicate archive, add it to the romlist instead, again checking for duplicates
+    ###      this will skip getting files twice when in skip extraction mode
+    
     for target in chkTargets(flags.targets, flags.sXtrct, m):
         m.st("Working on target archive <", target.name, ">...")
         # Initializes target archive object with user preferences
