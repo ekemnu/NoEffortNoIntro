@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 import zipfile
 #from neni import chkTargets as check_targets
+from targets import chkTargets, _target
 from messenger import messenger
 m = messenger(debug=True, verbose=True)
 
@@ -21,183 +22,30 @@ def setupEnv():
 class TargetNotFound(Exception):
         pass
 
-
-def chkTargets(targets, sXtrct, msg):    
-    m = msg
-
-    class TargetNotFound(Exception):
-        pass
-    
-    @dataclass
-    class _target:
-        name:           str  = field(init=False)                        # The directory name
-        path:           Path                                            # The resolved path to the starget
-        archives:       set  = field(default_factory=set, init=False)   # List of all archives found in target directory
-        invalidFiles:   list = field(default_factory=list, init=False)  # List of invalid files encountered
-        total:          int  = 0                                        # Total archives found in target directory
-        skipExtraction: bool = field(default=False)                     # Marks if this target was processed in skipextract mode
-        processed:      bool = field(default=False, init=False)         # Marks if this target has been processed
-        hasArchives:    bool = field(default=False, init=False)         # Marks if this target had any archives
-        instances: ClassVar[dict] = { }                                 # Dictionary containing all instances of this dataclass
-        
-        def __post_init__(tgt):
-            tgt.__class__.instances[str(tgt.path)] = tgt
-            tgt.name = tgt.path.name
-        
-        def __repr__(tgt):
-            return (f"\n_target:"
-                    f"\n  name:         {tgt.name}"
-                    f"\n  path:         {tgt.path}"
-                    f"\n  archives:     {tgt.archives}"
-                    f"\n  invalidFiles: {tgt.invalidFiles}"
-                    f"\n  total:        {tgt.total}"
-                    f"\n  sXtrct:       {tgt.skipExtraction}"
-                    f"\n  hasArchives:  {tgt.hasArchives}"
-                    f"\n  processed:    {tgt.processed}")
-        
-        # Return the archives list for literation
-        def __iter__(tgt):
-            # TODO have this remove the invalid files from the list before iteration
-            return iter(tgt.archives)
-        
-        # Save archive path objects to target object for use in main
-        def add(tgt, archive):
-            tgt.archives.add(archive)
-            tgt.total += 1
-
-        # Save archive path objects to target object for use in main
-        def invalid(tgt, archive):
-            tgt.invalidFiles.append(archive)
-        
-        # Checks if the target object has archive paths associated with it
-        def hasArchs(tgt):
-            if tgt.archives:
-                tgt.hasArchives = True
-            return True if tgt.hasArchives else False
-
-    _target.instances.clear()
-    
-    # Gather a list of all directories in target
-    def _gatherDirs(tgtObj, sXtrct):
-        # Check that we have permission to access the subtarget
-        if not os.access(tgtObj.path, os.R_OK):
-            raise PermissionError (f"No Permissions for target: {tgtObj.path}")
-        # Iterate through the target directory note directoires found
-        for _d in tgtObj.path.iterdir():
-            # Check that we have permission to access the subtarget
-            if not os.access(_d, os.R_OK):
-                raise PermissionError (f"No Permissions for target: {_d.resolve()}")
-            if _d.is_dir():
-                if str(_d.resolve()) not in tgtObj.instances:
-                    # Create a list of any directories in the subtarget
-                    _tgtObj = _target(path=_d.resolve(), skipExtraction=sXtrct)
-            else:
-                continue
-        return tgtObj
-        
-    # Gather a list of all archives in target directory
-    # Takes a list of target objects
-    # Outputs a dictionary in formation { path, targetObj}
-    def _gatherArchives():            
-        # Iterate through all target objects
-        for _tgtObj in list(_target.instances.values()):
-            _zipList = [ ]
-            # Create a list of any archives in the subtarget
-            _zipList.extend( [ _a for _a in _tgtObj.path.glob('*.zip', case_sensitive=None) ] )
-            # Iterate through the archives found to validate them for addition to list
-            for _z in _zipList:
-                # Validate the target
-                try:
-                    _validateTarget(_z)
-                    # If there isn't a target object already created
-                    # Create it, add the archive to the obj, and add obj to dict 
-                    if _z.resolve() not in _tgtObj.archives:
-                        _tgtObj.add(_z.resolve())
-                except (PermissionError, ValueError) as e:
-                    m.er(str(e))
-                    m.ei("Please verify this is a valid archive file")
-                    _tgtObj.invalid(_z.resolve())
-                    continue
-                _tgtObj.hasArchs()
-            _tgtObj.processed = True
-
-        if not any(t.hasArchives for t in _target.instances.values()):
-            raise TargetNotFound(f"Could not find a valid target archive in {tgtObj.path}")
-        # Return the populated target objects
-        return _target.instances
-    
-    # Validates a target to prepare it for romArchive
-    def _validateTarget(archive):
-        # Check that we have permission to access the target
-        if not os.access(archive, os.R_OK):
-            raise PermissionError (f"No Permissions for target: {archive.resolve()}")
-        # Check that the archive has a filesize more than minimum
-        if archive.stat().st_size <= 22:
-            raise ValueError (f"Not a valid file: {archive.resolve()}, Filesize: {archive.stat().st_size}B") 
-        # Test to ensure that file gathered are actually archives
-        # For performance, just check the magic bytes
-        with open(archive, 'rb') as t:
-            if not t.read(4) == b'\x50\x4b\x03\x04':
-                raise ValueError (f"Failed archive validation: {archive.resolve()}") 
-        # Target is a valid archive, add it to the target sXtrctlist
-        return True
-
-    m.st("Checking target(s)...")
-
-    for target in targets:
-        target = Path(target)
-        
-        try:
-            if target.is_dir():
-                if str(target.resolve()) not in _target.instances:
-                    tgtObj = _target(path=target.resolve(), skipExtraction=sXtrct)
-                else:
-                    tgtObj = _target.instances[str(target.resolve())]
-                _gatherDirs(tgtObj, sXtrct=sXtrct)
-                _gatherArchives()
-            elif target.is_file():
-                if str(target.parent.resolve()) not in _target.instances:
-                        tgtObj = _target(path=target.parent.resolve(), skipExtraction=sXtrct)
-                else:
-                    tgtObj = _target.instances[str(target.parent.resolve())]
-                if _validateTarget(target):
-                    tgtObj.add(target.resolve())
-                tgtObj.hasArchs()
-            # Raise if the target exists, but isn't a file or directory
-            else:
-                raise ValueError (f"Not a valid target: {target.resolve()}")
-        except PermissionError as e:
-                m.er("Permission Error: Cannot Access", str(target.resolve()))
-                m.ei("Please verify you have permissions to access this file")
-                tgtObj.invalid(target)
-                continue
-        except ValueError as e:
-                m.er(str(e))
-                m.ei("Please verify this is a valid archive file")   
-                tgtObj.invalid(target)
-                continue
-        except TargetNotFound as e:
-                m.er(str(e))
-                m.ei("Please verify the target")
-                m.st("Continuting to next target")
-                tgtObj.invalid(target)
-                continue
-        finally:
-            tgtObj.processed = True
-    
-    ### TODO let neni deal with this
-    #if not _target.instances.values():
-        # Error if no archives could be found
-    #    m.er("Unable To Find Valid Target(s)")
-    #    m.ei("Please supply a valid path to either a single archive, or a directory with No-Intro archives and run NeNi again")
-    #    m.ei("  Ex: $ neni /home/user/Downloads/archive.zip")
-    #    m.ei("  or: $ neni /home/user/Downloads/NoIntroArchives")
-    #    m.ex("Error")
-    #   raise TargetNotFound (f"target not found")
-    
-    # Return the list of full paths to the targets
-    return _target.instances
-
+# Defines the order tests will be executed in
+# Comment out a test to skip it
+def tests():
+    singleArchive()                    # Tests normal logic path
+    multiArchive()                     # Tests more than one set targeted
+    directoryWithSets()                # Tests multi-target logic path
+    multiDirectoryWithSets()           # Tests multiple targets containing sets
+    multiDirectoryAndArchives()          #
+    multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
+    directoryEmpty()                   # Tests if called on directory with no archives
+    directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
+    directoryWithGames()               # Tests skip extraction mode
+    multiDirectoryWithGames()          # Tests targeting parent of multiple extracted sets
+    directoryWithBadGame()             # Tests skip extract if there is a bad file
+    #-->directoryWithBadGamesPermissions() # Tests a permissions error with a file in skip extract mode
+    directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
+    #--brktest->directoryEmptyXStrct()             # Tests if called on an empty directory in skip extract mode                 
+    archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
+    directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
+    archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
+    oneBadArchive()                    # Tests handling of a bad archive mixed in with good
+    oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
+    badTarget()                       # Tests targeting a non-archive
+    #--->badTargetSys()                       # Tests targeting a system file
 
 ############### TESTS BEGIN HERE #################
 ##### TEST HELPER FUNCTION ####
@@ -261,36 +109,12 @@ def assertTargets(tgtList, expected, checkTotal=False, checkSXtrct=False, checkA
                 f"Returned:  {returnedInvalid}\n"
                 f"Expected:  {expInvalid}")
 
-# Defines the order tests will be executed in
-# Comment out a test to skip it
-def tests():
-    singleArchive()                    # Tests normal logic path
-    multiArchive()                     # Tests more than one set targeted
-    directoryWithSets()                # Tests multi-target logic path
-    multiDirectoryWithSets()           # Tests multiple targets containing sets
-    multiDirectoryAndArchives()          #
-    multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
-    directoryEmpty()                   # Tests if called on directory with no archives
-    directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
-    directoryWithGames()               # Tests skip extraction mode
-    multiDirectoryWithGames()          # Tests targeting parent of multiple extracted sets
-    directoryWithBadGame()             # Tests skip extract if there is a bad file
-    #--->directoryWithBadGamesPermissions() # Tests a permissions error with a file in skip extract mode
-    directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
-    #--brktest->directoryEmptyXStrct()             # Tests if called on an empty directory in skip extract mode                 
-    archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
-    directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
-    archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
-    oneBadArchive()                    # Tests handling of a bad archive mixed in with good
-    oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
-    badTarget()                       # Tests targeting a non-archive
-    #--->badTargetSys()                       # Tests targeting a system file
-
 # Simulates a single archive being targeted
 # chkTargets should return a list with the single arhive
 def singleArchive():
-    m.st("\nBegining Test singleArchive")
-    setupEnv()
+    m.st("\n\n\nBegining Test singleArchive")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock file(s) to be passed to chkTargets
     targets  = [ f"{testLocation}Archive - With 3 Top Level Games (Normal Set).zip" ]
     # Call chkTargets to run the test
@@ -308,8 +132,9 @@ def singleArchive():
 # Simulates a multiple archives being targeted
 # chkTargets should return a list with the archives
 def multiArchive():
-    m.st("\nBegining Test multiArchive")
-    setupEnv()
+    m.st("\n\n\nBegining Test multiArchive")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock file(s) to be passed to chkTargets
     targets  = [ f"{testLocation}Archive - With 3 Top Level Games (Normal Set).zip",
                  f"{testLocation}Archive - With 3 Top Level Games (Normal Set)2.zip",
@@ -331,8 +156,9 @@ def multiArchive():
 # Simulates a directory with sets being targeted
 # chkTargets should return a list with the arhives found in the directory
 def directoryWithSets():
-    m.st("\nBegining Test directoryWithSets")
-    setupEnv()
+    m.st("\n\n\nBegining Test directoryWithSets")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_sets" ]
     # Call chkTargets to run the test
@@ -351,8 +177,9 @@ def directoryWithSets():
 # Simulates targeting multiple directories with archive sets
 # chkTargets should return a list with the archives
 def multiDirectoryWithSets():
-    m.st("\nBegining Test multiDirectoryWithSets")
-    setupEnv()
+    m.st("\n\n\nBegining Test multiDirectoryWithSets")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_sets",
                  f"{testLocation}directory_with_junk_and_sets" ]
@@ -378,8 +205,9 @@ def multiDirectoryWithSets():
 # Simulates a multiple directories with archives being targeted
 # chkTargets should return a list with the archives
 def multiDirectoryAndArchives():
-    m.st("\nBegining Test multiDirectoryAndArchives")
-    setupEnv()
+    m.st("\n\n\nBegining Test multiDirectoryAndArchives")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock file(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set).zip",
                  f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)2.zip",
@@ -414,8 +242,9 @@ def multiDirectoryAndArchives():
 # Simulates a directories being targted before multiple archives
 # chkTargets should return a list with the archives
 def multiDirectoryBeforeArchives():
-    m.st("\nBegining Test multiDirectoryBeforeArchives")
-    setupEnv()
+    m.st("\n\n\nBegining Test multiDirectoryBeforeArchives")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock file(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_directories_with sets/directory1",
                  f"{testLocation}directory_with_directories_with sets/directory2",
@@ -451,8 +280,9 @@ def multiDirectoryBeforeArchives():
 # Simulates a directory with no archives
 # chkTargets should ignore everything and return an empty list
 def directoryEmpty():
-    m.st("\nBegining Test directoryEmpty")
-    setupEnv()
+    m.st("\n\n\nBegining Test directoryEmpty")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_junk" ]
     # Call chkTargets to run the test
@@ -470,8 +300,9 @@ def directoryEmpty():
 # Simulates a directory with sets being targeted that also has other misc files
 # chkTargets should ignore the other files and return a list with the arhives found in the directory
 def directoryWithJunkAndSets():
-    m.st("\nBegining Test directoryWithJunkAndSets")
-    setupEnv()
+    m.st("\n\n\nBegining Test directoryWithJunkAndSets")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_junk_and_sets" ]
     # Call chkTargets to run the test
@@ -491,8 +322,9 @@ def directoryWithJunkAndSets():
 # Simulates skip extraction mode, working on an already extracted set
 # chkTargets should return a list of all archives in the directory 
 def directoryWithGames():
-    m.st("\nBegining Test directoryWithGames")
-    setupEnv()
+    m.st("\n\n\nBegining Test directoryWithGames")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_games" ]
     # Call chkTargets to run the test
@@ -512,8 +344,9 @@ def directoryWithGames():
 # Simulates skip extraction mode, targeting parent of multiple already extracted sets
 # chkTargets should return a list of all archives in the directory 
 def multiDirectoryWithGames():
-    m.st("\nBegining Test multiDirectoryWithGames")
-    setupEnv()
+    m.st("\n\n\nBegining Test multiDirectoryWithGames")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_extracted_sets" ]
     # Call chkTargets to run the test
@@ -543,8 +376,9 @@ def multiDirectoryWithGames():
 # Simulates a directory with a bad zip file in skip extraction mode
 # chkTargets should raise and extection and stop
 def directoryWithBadGame():
-    m.st("\nBegining Test directoryWithBadGame")
-    setupEnv()
+    m.st("\n\n\nBegining Test directoryWithBadGame")
+    if not os.path.isdir(testLocation):
+        setupEnv()
     # Mock dir(s) to be passed to chkTargets
     targets  = [ f"{testLocation}directory_with_junk_badfile_and_games" ]
     # Call chkTargets to run the test
@@ -565,7 +399,7 @@ def directoryWithBadGame():
 # Simulates a single archive being targeted that has bad permissions
 # chkTargets should raise a PermissionError
 def directoryWithBadGamesPermissions():
-    m.st("\nBegining Test directoryWithBadGamesPermissions")
+    m.st("\n\n\nBegining Test directoryWithBadGamesPermissions")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Set unreadable permissions to prepare the test case
@@ -591,7 +425,7 @@ def directoryWithBadGamesPermissions():
 # Simulates a directory being targeted that has bad permissions
 # chkTargets should raise a PermissionError
 def directoryWithBadPermsSXstrct():
-    m.st("\nBegining Test directoryWithBadPermsSXstrct")
+    m.st("\n\n\nBegining Test directoryWithBadPermsSXstrct")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Set unreadable permissions to prepare the test case
@@ -616,7 +450,7 @@ def directoryWithBadPermsSXstrct():
 # Simulates a directory with no roms in skip extraction mode
 # chkTargets should ignore everything and return an empty list
 def directoryEmptyXStrct():
-    m.st("\nBegining Test directoryEmptyXStrct")
+    m.st("\n\n\nBegining Test directoryEmptyXStrct")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock dir(s) to be passed to chkTargets
@@ -636,7 +470,7 @@ def directoryEmptyXStrct():
 # Simulates a single archive being targeted that has bad permissions
 # chkTargets should raise a PermissionError
 def archiveWithBadPermissions():
-    m.st("\nBegining Test archiveWithBadPermissions")
+    m.st("\n\n\nBegining Test archiveWithBadPermissions")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Set unreadable permissions to prepare the test case
@@ -660,7 +494,7 @@ def archiveWithBadPermissions():
 # Simulates a single archive being targeted that has bad permissions
 # chkTargets should raise a PermissionError
 def directoryWithBadPermissions():
-    m.st("\nBegining Test directoryWithBadPermissions")
+    m.st("\n\n\nBegining Test directoryWithBadPermissions")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Set unreadable permissions to prepare the test case
@@ -684,7 +518,7 @@ def directoryWithBadPermissions():
 # Simulates a single invalid archive being targeted
 # chkTargets should raise a ValueError
 def archiveWithSmallSize():
-    m.st("\nBegining Test archiveWithSmallSize")
+    m.st("\n\n\nBegining Test archiveWithSmallSize")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock file(s) to be passed to chkTargets
@@ -705,7 +539,7 @@ def archiveWithSmallSize():
 # Simulates a invalid archive mixed in with good archives
 # chkTargets return a list excluding the bad file
 def oneBadArchive():
-    m.st("\nBegining Test oneBadArchive")
+    m.st("\n\n\nBegining Test oneBadArchive")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock file(s) to be passed to chkTargets
@@ -735,7 +569,7 @@ def oneBadArchive():
 # Simulates a invalid archive mixed in with good archives
 # chkTargets return a list excluding the bad file
 def oneBadArchivePermissions():
-    m.st("\nBegining Test oneBadArchivePermissions")
+    m.st("\n\n\nBegining Test oneBadArchivePermissions")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Set unreadable permissions to prepare the test case
@@ -768,7 +602,7 @@ def oneBadArchivePermissions():
 # Simulates a single non-archive file being target
 # chkTargets should return a single tgtObj with file in invalid list
 def badTarget():
-    m.st("\nBegining Test badTarget")
+    m.st("\n\n\nBegining Test badTarget")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock file(s) to be passed to chkTargets
@@ -789,7 +623,7 @@ def badTarget():
 # Simulates a single system file being targeted
 # chkTargets should return a single tgtObj with file in invalid list
 def badTargetSys():
-    m.st("\nBegining Test badTarget")
+    m.st("\n\n\nBegining Test badTarget")
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock file(s) to be passed to chkTargets
