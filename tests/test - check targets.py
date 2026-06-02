@@ -25,26 +25,32 @@ class TargetNotFound(Exception):
 # Defines the order tests will be executed in
 # Comment out a test to skip it
 def tests():
-    singleArchive()                    # Tests normal logic path
-    multiArchive()                     # Tests more than one set targeted
-    directoryWithSets()                # Tests multi-target logic path
-    multiDirectoryWithSets()           # Tests multiple targets containing sets
-    multiDirectoryAndArchives()          #
-    multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
-    directoryEmpty()                   # Tests if called on directory with no archives
-    directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
-    directoryWithGames()               # Tests skip extraction mode
-    multiDirectoryWithGames()          # Tests targeting parent of multiple extracted sets
-    directoryWithBadGame()             # Tests skip extract if there is a bad file
+    #singleArchive()                    # Tests normal logic path
+    #multiArchive()                     # Tests more than one set targeted
+    #directoryWithSets()                # Tests multi-target logic path
+    #directoryWithSymlinks()             # Tests targeting a directory containing symlinks
+    #multiDirectoryWithSets()           # Tests multiple targets containing sets
+    #multiDirectoryAndArchives()          #
+    #multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
+    #directoryEmpty()                   # Tests if called on directory with no archives
+    #directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
+    #directoryWithGames()               # Tests skip extraction mode
+    #multiDirectoryWithGames()          # Tests targeting parent of multiple extracted sets
+    #directoryWithBadGame()             # Tests skip extract if there is a bad file
     #-->directoryWithBadGamesPermissions() # Tests a permissions error with a file in skip extract mode
-    directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
+    #directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
     #--brktest->directoryEmptyXStrct()             # Tests if called on an empty directory in skip extract mode                 
-    archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
-    directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
-    archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
-    oneBadArchive()                    # Tests handling of a bad archive mixed in with good
-    oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
-    badTarget()                       # Tests targeting a non-archive
+    #archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
+    #directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
+    archiveWithAPasswprd()             # Tests handling of a password protected archive
+    #archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
+    #archiveWithLongName()               # Tests targeting an archive with a very long name
+    #archiveWithUnicode()                # Tests targeting a archive with uniode in name
+    #archiveSameTwice()                  # Tests targeting the same archive twice
+    #oneBadArchive()                    # Tests handling of a bad archive mixed in with good
+    #oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
+    #noTarget()
+    #badTarget()                       # Tests targeting a non-archive
     #--->badTargetSys()                       # Tests targeting a system file
 
 ############### TESTS BEGIN HERE #################
@@ -110,7 +116,7 @@ def assertTargets(tgtList, expected, checkTotal=False, checkSXtrct=False, checkA
                 f"Expected:  {expInvalid}")
 
 # Simulates a single archive being targeted
-# chkTargets should return a list with the single arhive
+# chkTargets should return a tgtObj with the single arhive
 def singleArchive():
     m.st("\n\n\nBegining Test singleArchive")
     if not os.path.isdir(testLocation):
@@ -128,9 +134,9 @@ def singleArchive():
       "total": 1 
     }, ], checkTotal=True)
     m.st("Test completed Sucessfully")
-    
+
 # Simulates a multiple archives being targeted
-# chkTargets should return a list with the archives
+# chkTargets should return a tgtObj with the archives
 def multiArchive():
     m.st("\n\n\nBegining Test multiArchive")
     if not os.path.isdir(testLocation):
@@ -154,7 +160,7 @@ def multiArchive():
     m.st("Test completed Sucessfully")
 
 # Simulates a directory with sets being targeted
-# chkTargets should return a list with the arhives found in the directory
+# chkTargets should return a tgtObj with the arhives found in the directory
 def directoryWithSets():
     m.st("\n\n\nBegining Test directoryWithSets")
     if not os.path.isdir(testLocation):
@@ -174,8 +180,49 @@ def directoryWithSets():
     ], checkTotal=True)
     m.st("Test completed Sucessfully")
 
+# Simulates a directory with sets being targeted
+# chkTargets should return a tgtObj with the arhives found in the directory
+def directoryWithSymlinks():
+    m.st("\n\n\nBegining Test directoryWithSymlinks")
+    if not os.path.isdir(testLocation):
+        setupEnv()
+    # Mock dir(s) to be passed to chkTargets
+    targets  = [ f"{testLocation}directory_with_symlinks" ]
+    # Call chkTargets to run the test
+    tgtList = chkTargets(targets, False, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 1
+    assertTargets(tgtList, [
+    { "path":       Path(testLocation, "directory_with_symlinks"),
+      "archives": [ Path(testLocation, "directory_with_symlinks/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_symlinks/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_symlinks/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+      "total": 3 },
+    ], checkTotal=True)
+    m.st("Test completed Sucessfully")
+
+# Simulates a single archive being targeted with a long name
+# chkTargets should return a tgtObj with the single arhive
+def archiveWithLongName():
+    m.st("\n\n\nBegining Test archiveWithLongName")
+    if not os.path.isdir(testLocation):
+        setupEnv()
+    # Mock file(s) to be passed to chkTargets
+    targets  = [ f"{testLocation}Archive\ -\ With\ Long\ NamepVtuq0\&+3TS9+.RghG\*Hid\*zvBC\%\;WdN_SKea7\*\#19J\;R%F\[\?%:\!bSg:TxD12345CzS0aZJ\%\%\%f%r7fe-e\;X\?36xEwj\%Z\!-\[z\;==bz\*0VAu5iVaAVaum\)b_\?vdW,AE\(\$8_39=wkdS\?-m+\;7cS5q5_G=\!vLZ\?xR\;Eg\%_vJUMj\(\?c-=CAeq00\[q\&X,25P\.zip" ]
+    # Call chkTargets to run the test
+    tgtList  = chkTargets(targets, False, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 1
+    assertTargets(tgtList, [
+    # Results to check against
+    { "path":       Path(testLocation),
+      "archives": [ Path(testLocation, "Archive\ -\ With\ Long\ NamepVtuq0\&+3TS9+.RghG\*Hid\*zvBC\%\;WdN_SKea7\*\#19J\;R%F\[\?%:\!bSg:TxD12345CzS0aZJ\%\%\%f%r7fe-e\;X\?36xEwj\%Z\!-\[z\;==bz\*0VAu5iVaAVaum\)b_\?vdW,AE\(\$8_39=wkdS\?-m+\;7cS5q5_G=\!vLZ\?xR\;Eg\%_vJUMj\(\?c-=CAeq00\[q\&X,25P\.zip") ],
+      "total": 1 
+    }, ], checkTotal=True)
+    m.st("Test completed Sucessfully")
+
 # Simulates targeting multiple directories with archive sets
-# chkTargets should return a list with the archives
+# chkTargets should return a tgtObj with the archives
 def multiDirectoryWithSets():
     m.st("\n\n\nBegining Test multiDirectoryWithSets")
     if not os.path.isdir(testLocation):
@@ -203,7 +250,7 @@ def multiDirectoryWithSets():
     m.st("Test completed Sucessfully")
 
 # Simulates a multiple directories with archives being targeted
-# chkTargets should return a list with the archives
+# chkTargets should return a tgtObj with the archives
 def multiDirectoryAndArchives():
     m.st("\n\n\nBegining Test multiDirectoryAndArchives")
     if not os.path.isdir(testLocation):
@@ -240,7 +287,7 @@ def multiDirectoryAndArchives():
     m.st("Test completed Sucessfully")
 
 # Simulates a directories being targted before multiple archives
-# chkTargets should return a list with the archives
+# chkTargets should return a tgtObj with the archives
 def multiDirectoryBeforeArchives():
     m.st("\n\n\nBegining Test multiDirectoryBeforeArchives")
     if not os.path.isdir(testLocation):
@@ -298,7 +345,7 @@ def directoryEmpty():
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
 
 # Simulates a directory with sets being targeted that also has other misc files
-# chkTargets should ignore the other files and return a list with the arhives found in the directory
+# chkTargets should ignore the other files and return a tgtObj with the arhives found in the directory
 def directoryWithJunkAndSets():
     m.st("\n\n\nBegining Test directoryWithJunkAndSets")
     if not os.path.isdir(testLocation):
@@ -320,7 +367,7 @@ def directoryWithJunkAndSets():
     m.st("Test completed Sucessfully")
 
 # Simulates skip extraction mode, working on an already extracted set
-# chkTargets should return a list of all archives in the directory 
+# chkTargets should return a tgtObj of all archives in the directory 
 def directoryWithGames():
     m.st("\n\n\nBegining Test directoryWithGames")
     if not os.path.isdir(testLocation):
@@ -342,7 +389,7 @@ def directoryWithGames():
     m.st("Test completed Sucessfully")
     
 # Simulates skip extraction mode, targeting parent of multiple already extracted sets
-# chkTargets should return a list of all archives in the directory 
+# chkTargets should return a tgtObj of all archives in the directory 
 def multiDirectoryWithGames():
     m.st("\n\n\nBegining Test multiDirectoryWithGames")
     if not os.path.isdir(testLocation):
@@ -434,18 +481,18 @@ def directoryWithBadPermsSXstrct():
     targets  = [ f"{testLocation}directory_with_junk" ]
     # Compile list in output format to check against
     # Call chkTargets to run the test
-    try:
-        tgtList  = chkTargets(targets, True, m)
-    except TargetNotFound as e:
-        print(f"Failed as expected\n Exception: {e}"
-        f"\nReturned: Failure TargetNotFound\n"
-        f"Expected: Failure TargetNotFound\n" )
-    else:
-        print(f"\nReturned: No Error\n"
-        f"Expected: Failure TargetNotFound\n" )
-    finally:
-        os.chmod(testLocation + "directory_with_junk", 0o777)
-        return
+    tgtList = chkTargets(targets, True, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 1
+    assertTargets(tgtList, [
+    # Results to test against
+    { "path":           Path(testLocation, "directory_with_junk"),
+      "archives":     [ ],
+      "invalidFiles": [ Path(testLocation, "directory_with_junk") ],
+      "total": 0, "sXtrct":   True },
+    ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
+    os.chmod(testLocation + "directory_with_games/Fake Game (Vatican) (La).zip", 0o777)
+    m.st("Test completed Sucessfully")
     
 # Simulates a directory with no roms in skip extraction mode
 # chkTargets should ignore everything and return an empty list
@@ -489,6 +536,21 @@ def archiveWithBadPermissions():
       "total": 0 },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     os.chmod(testLocation + "Archive - With Bad Permissions.zip", 0o777)
+    m.st("Test completed Sucessfully")
+
+# Simulates a single archive being targeted that has a passwordthat has bad permissions
+# chkTargets should return no tgtObjs
+def archiveWithAPasswprd():
+    m.st("\n\n\nBegining Test archiveWithAPasswprd")
+    if not os.path.isdir(testLocation):
+        setupEnv()
+    # Mock file(s) to be passed to chkTargets
+    targets  = [ f"{testLocation}Archive - With A Password.zip" ]
+    # Call chkTargets to run the test
+    tgtList = chkTargets(targets, False, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 0
+    assertTargets(tgtList, [ ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     m.st("Test completed Sucessfully")
 
 # Simulates a single archive being targeted that has bad permissions
@@ -537,7 +599,7 @@ def archiveWithSmallSize():
     m.st("Test completed Sucessfully")
 
 # Simulates a invalid archive mixed in with good archives
-# chkTargets return a list excluding the bad file
+# chkTargets return a tgtObj excluding the bad file
 def oneBadArchive():
     m.st("\n\n\nBegining Test oneBadArchive")
     if not os.path.isdir(testLocation):
@@ -566,8 +628,49 @@ def oneBadArchive():
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     m.st("Test completed Sucessfully")
 
+# Simulates targeting an archive with unicode charcters
+# chkTargets should return a tgtObj with the single arhive
+def archiveWithUnicode():
+    m.st("\n\n\nBegining Test archiveWithUnicode")
+    if not os.path.isdir(testLocation):
+        setupEnv()
+    # Mock file(s) to be passed to chkTargets
+    targets  = [ f"{testLocation}Archive - With Unicodeⱒ⨤⫔⧮✑⹼⭸⩛⠴␼⨤ℷ♱↬≭Ⳁ⸌⤙ⅴ⊁⯚.zip" ]
+    # Call chkTargets to run the test
+    tgtList  = chkTargets(targets, False, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 1
+    assertTargets(tgtList, [
+    # Results to check against
+    { "path":       Path(testLocation),
+    "archives": [ Path(testLocation, "Archive - With Unicodeⱒ⨤⫔⧮✑⹼⭸⩛⠴␼⨤ℷ♱↬≭Ⳁ⸌⤙ⅴ⊁⯚.zip") ],
+    "total": 1 
+    }, ], checkTotal=True)
+    m.st("Test completed Sucessfully")
+
+# Simulates targeting the same archive twice
+# chkTargets should return a tgtObj with the single arhive
+def archiveSameTwice():
+    m.st("\n\n\nBegining Test archiveSameTwice")
+    if not os.path.isdir(testLocation):
+        setupEnv()
+    # Mock file(s) to be passed to chkTargets
+    targets  = [ f"{testLocation}Archive - With 3 Top Level Games (Normal Set).zip",
+                 f"{testLocation}Archive - With 3 Top Level Games (Normal Set).zip" ]
+    # Call chkTargets to run the test
+    tgtList  = chkTargets(targets, False, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 1
+    assertTargets(tgtList, [
+    # Results to check against
+    { "path":       Path(testLocation),
+      "archives": [ Path(testLocation, "Archive - With 3 Top Level Games (Normal Set).zip") ],
+      "total": 1 
+    }, ], checkTotal=True)
+    m.st("Test completed Sucessfully")
+
 # Simulates a invalid archive mixed in with good archives
-# chkTargets return a list excluding the bad file
+# chkTargets return a tgtObj excluding the bad file
 def oneBadArchivePermissions():
     m.st("\n\n\nBegining Test oneBadArchivePermissions")
     if not os.path.isdir(testLocation):
@@ -597,6 +700,21 @@ def oneBadArchivePermissions():
       "total": 0 },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     os.chmod(testLocation + "Archive - With Bad Permissions.zip", 0o777)
+    m.st("Test completed Sucessfully")
+
+# Simulates an empty target list
+# chkTargets should return no tgtObjs
+def noTarget():
+    m.st("\n\n\nBegining Test noTarget")
+    if not os.path.isdir(testLocation):
+        setupEnv()
+    # Mock file(s) to be passed to chkTargets
+    targets  = [ ]
+    # Call chkTargets to run the test
+    tgtList  = chkTargets(targets, False, m)
+    dumpTargets(tgtList)
+    assert len(tgtList) == 0
+    assertTargets(tgtList, [ ], checkTotal=True)
     m.st("Test completed Sucessfully")
 
 # Simulates a single non-archive file being target
