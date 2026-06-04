@@ -34,7 +34,7 @@ class _target:
                 f"\n  total:        {tgt.total}"
                 f"\n  sXtrct:       {tgt.skipExtraction}"
                 f"\n  hasArchives:  {tgt.hasArchives}"
-                f"\n  isProcessed:    {tgt.isProcessed}")
+                f"\n  isProcessed:  {tgt.isProcessed}")
     
     # Return the archives list for literation
     def __iter__(tgt):
