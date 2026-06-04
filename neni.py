@@ -31,7 +31,7 @@
 #####       0.23 Support reading archive ToC > scrape > sort > extract into place. Bug Fixes
 #####       0.24 Parrellalize Rom extraction
 #####       0.25 Simplified tag/rom counters by rewriting to use Collections, simplified audit log code, bug fixes
-#####       0.26 Rewrote chkTargets, wrote tests to validate, fixed all known bugs
+#####       0.26 Rewrote chkTargets to be more flexible and robust, wrote tests to validate, fixed all bugs they fonund
 #####       0.2x TODO: Added --dat, and the ability to scrape DAT files for file names to test code
 #####       0.2x TODO: thread per archive in multi archive workflow
 #####       0.2x TODO: better error handling

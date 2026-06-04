@@ -8,6 +8,7 @@
 !messenger.py
 !neni.py
 !rom.py
+!targets.py
 !tests/
 !tests/*.py
 !tests/test*.py
