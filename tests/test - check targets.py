@@ -30,7 +30,7 @@ def tests():
     directoryWithSets()                # Tests multi-target logic path
     directoryWithSymlinks()            # Tests targeting a directory containing symlinks
     multiDirectoryWithSets()           # Tests multiple targets containing sets
-    multiDirectoryAndArchives()          #
+    multiDirectoryAndArchives()        # Tests targeting multiple directories and multiple archives
     multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
     directoryEmpty()                   # Tests if called on directory with no archives
     directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
@@ -44,14 +44,14 @@ def tests():
     archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
     archiveWithAPasswprd()             # Tests handling of a password protected archive
     archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
-    archiveWithLongName()               # Tests targeting an archive with a very long name
-    archiveWithUnicode()                # Tests targeting a archive with uniode in name
-    archiveSameTwice()                  # Tests targeting the same archive twice
+    archiveWithLongName()              # Tests targeting an archive with a very long name
+    archiveWithUnicode()               # Tests targeting a archive with uniode in name
+    archiveSameTwice()                 # Tests targeting the same archive twice
     oneBadArchive()                    # Tests handling of a bad archive mixed in with good
     oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
-    noTarget()
-    badTarget()                       # Tests targeting a non-archive
-    badTargetSys()                       # Tests targeting a system file
+    noTarget()                         # Tests targeting nothing
+    badTarget()                        # Tests targeting a non-archive
+    badTargetSys()                     # Tests targeting a system file
 
 ############### TESTS BEGIN HERE #################
 ##### TEST HELPER FUNCTION ####
@@ -482,16 +482,16 @@ def directoryWithBadPermsSXstrct():
     # Compile list in output format to check against
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, True, m)
+    os.chmod(testLocation + "directory_with_games/Fake Game (Vatican) (La).zip", 0o777)
     dumpTargets(tgtList)
     assert len(tgtList) == 1
     assertTargets(tgtList, [
     # Results to test against
     { "path":           Path(testLocation, "directory_with_junk"),
       "archives":     [ ],
-      "invalidFiles": [ Path(testLocation, "directory_with_junk") ],
+      "invalidFiles": [ ],
       "total": 0, "sXtrct":   True },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
-    os.chmod(testLocation + "directory_with_games/Fake Game (Vatican) (La).zip", 0o777)
     m.st("Test completed Sucessfully")
     
 # Simulates a directory with no roms in skip extraction mode
@@ -571,7 +571,7 @@ def directoryWithBadPermissions():
     # Results to test against
     { "path":           Path(testLocation, "directory_with_junk"),
       "archives":     [ ],
-      "invalidFiles": [ Path(testLocation, "directory_with_junk") ],
+      "invalidFiles": [ ],
       "total": 0 },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     os.chmod(testLocation + "directory_with_junk", 0o777)
