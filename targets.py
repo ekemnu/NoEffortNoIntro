@@ -74,7 +74,6 @@ def chkTargets(targets, sXtrct, msg):
     def _gatherTargets(tgtObj, sXtrct):
         _tgtList = deque()
         _tgtList.append(tgtObj)
-        _procList = [ ]
 
         # TODO make resursive directory scan only 2 levels deep
         while _tgtList:
