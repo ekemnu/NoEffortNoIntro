@@ -15,7 +15,7 @@ class _target:
     skipExtraction: bool = field(default=False)                     # Marks if this target was processed in skipextract mode
     isProcessed:    bool = field(default=False, init=False)         # Marks if this target has been processed
     hasArchives:    bool = field(default=False, init=False)         # Marks if this target had any archives
-    instances: ClassVar[dict] = { }                                 # Dictionary containing all instances of this dataclass
+    instances:      ClassVar[dict] = { }                            # Dictionary containing all instances of this dataclass
     
     # Create registry of target object instances
     # Add new objects on creatoin
@@ -154,7 +154,6 @@ def chkTargets(targets, sXtrct, msg):
         return True
 
     m.st("Checking target(s)...")
-
     # Create target objets from target(s) passed at runtime
     for target in targets:
         # Get the resolved path to the target
