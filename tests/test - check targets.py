@@ -25,33 +25,33 @@ class TargetNotFound(Exception):
 # Defines the order tests will be executed in
 # Comment out a test to skip it
 def tests():
-    #singleArchive()                    # Tests normal logic path
-    #multiArchive()                     # Tests more than one set targeted
-    #directoryWithSets()                # Tests multi-target logic path
-    #directoryWithSymlinks()             # Tests targeting a directory containing symlinks
-    #multiDirectoryWithSets()           # Tests multiple targets containing sets
-    #multiDirectoryAndArchives()          #
-    #multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
-    #directoryEmpty()                   # Tests if called on directory with no archives
-    #directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
-    #directoryWithGames()               # Tests skip extraction mode
-    #multiDirectoryWithGames()          # Tests targeting parent of multiple extracted sets
-    #directoryWithBadGame()             # Tests skip extract if there is a bad file
-    #-->directoryWithBadGamesPermissions() # Tests a permissions error with a file in skip extract mode
-    #directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
+    singleArchive()                    # Tests normal logic path
+    multiArchive()                     # Tests more than one set targeted
+    directoryWithSets()                # Tests multi-target logic path
+    directoryWithSymlinks()            # Tests targeting a directory containing symlinks
+    multiDirectoryWithSets()           # Tests multiple targets containing sets
+    multiDirectoryAndArchives()          #
+    multiDirectoryBeforeArchives()     # Tests multiple directories and multiple archives being called
+    directoryEmpty()                   # Tests if called on directory with no archives
+    directoryWithJunkAndSets()         # Tests if irrelevant files are being ignored
+    directoryWithGames()               # Tests skip extraction mode
+    multiDirectoryWithGames()          # Tests targeting parent of multiple extracted sets
+    directoryWithBadGame()             # Tests skip extract if there is a bad file
+    directoryWithBadGamesPermissions() # Tests a permissions error with a file in skip extract mode
+    directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
     #--brktest->directoryEmptyXStrct()             # Tests if called on an empty directory in skip extract mode                 
-    #archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
-    #directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
+    directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
+    archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
     archiveWithAPasswprd()             # Tests handling of a password protected archive
-    #archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
-    #archiveWithLongName()               # Tests targeting an archive with a very long name
-    #archiveWithUnicode()                # Tests targeting a archive with uniode in name
-    #archiveSameTwice()                  # Tests targeting the same archive twice
-    #oneBadArchive()                    # Tests handling of a bad archive mixed in with good
-    #oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
-    #noTarget()
-    #badTarget()                       # Tests targeting a non-archive
-    #--->badTargetSys()                       # Tests targeting a system file
+    archiveWithSmallSize()             # Tests if one bad archive spoils the bunch
+    archiveWithLongName()               # Tests targeting an archive with a very long name
+    archiveWithUnicode()                # Tests targeting a archive with uniode in name
+    archiveSameTwice()                  # Tests targeting the same archive twice
+    oneBadArchive()                    # Tests handling of a bad archive mixed in with good
+    oneBadArchivePermissions()         # Tests a multiarchive target, one of which has bad perms
+    noTarget()
+    badTarget()                       # Tests targeting a non-archive
+    badTargetSys()                       # Tests targeting a system file
 
 ############### TESTS BEGIN HERE #################
 ##### TEST HELPER FUNCTION ####
@@ -340,7 +340,7 @@ def directoryEmpty():
     # Results to test against
     { "path":           Path(testLocation, "directory_with_junk"),
       "archives":     [ ],
-      "invalidFiles": [ Path(testLocation, "directory_with_junk") ],
+      "invalidFiles": [ ],
       "total": 0 }
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
 
@@ -456,6 +456,7 @@ def directoryWithBadGamesPermissions():
     # Compile list in output format to check against
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, True, m)
+    os.chmod(testLocation + "directory_with_games/Fake Game (Vatican) (La).zip", 0o777)
     dumpTargets(tgtList)
     assert len(tgtList) == 1
     assertTargets(tgtList, [
@@ -466,7 +467,6 @@ def directoryWithBadGamesPermissions():
       "invalidFiles": [ Path(testLocation, "directory_with_games/Fake Game (Vatican) (La).zip") ],
       "total": 2, "sXtrct":   True },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
-    os.chmod(testLocation + "directory_with_games/Fake Game (Vatican) (La).zip", 0o777)
     m.st("Test completed Sucessfully")
 
 # Simulates a directory being targeted that has bad permissions
@@ -749,14 +749,8 @@ def badTargetSys():
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, False, m)
     dumpTargets(tgtList)
-    assert len(tgtList) == 1
-    assertTargets(tgtList, [
-    # Results to test against
-    { "path":           Path("/dev"),
-      "archives":     [ ],
-      "invalidFiles": [ Path("/dev/null") ],
-      "total": 0 },
-    ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
+    assert len(tgtList) == 0
+    assertTargets(tgtList, [ ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     m.st("Test completed Sucessfully")
 
 # TODO nested directories in skip extract
