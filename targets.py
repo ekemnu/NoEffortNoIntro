@@ -30,6 +30,7 @@ class _target:
                 f"\n  path:         {tgt.path}"
                 f"\n  archives:     {tgt.archives}"
                 f"\n  invalidFiles: {tgt.invalidFiles}"
+                f"\n  unprocessed:  {tgt.unprocessed}"
                 f"\n  total:        {tgt.total}"
                 f"\n  sXtrct:       {tgt.skipExtraction}"
                 f"\n  hasArchives:  {tgt.hasArchives}"
