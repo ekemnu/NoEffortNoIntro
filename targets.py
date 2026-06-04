@@ -13,7 +13,7 @@ class _target:
     unprocessed:    list = field(default_factory=list, init=False)  # List of unprocessed file found while scraping dirs
     total:          int  = 0                                        # Total archives found in target directory
     skipExtraction: bool = field(default=False)                     # Marks if this target was processed in skipextract mode
-    processed:      bool = field(default=False, init=False)         # Marks if this target has been processed
+    isProcessed:    bool = field(default=False, init=False)         # Marks if this target has been processed
     hasArchives:    bool = field(default=False, init=False)         # Marks if this target had any archives
     instances: ClassVar[dict] = { }                                 # Dictionary containing all instances of this dataclass
     
@@ -33,7 +33,7 @@ class _target:
                 f"\n  total:        {tgt.total}"
                 f"\n  sXtrct:       {tgt.skipExtraction}"
                 f"\n  hasArchives:  {tgt.hasArchives}"
-                f"\n  processed:    {tgt.processed}")
+                f"\n  isProcessed:    {tgt.isProcessed}")
     
     # Return the archives list for literation
     def __iter__(tgt):
@@ -114,7 +114,7 @@ def chkTargets(targets, sXtrct, msg):
                 if tgtObj.unprocessed:
                     _tgtList.append(tgtObj)
                     continue
-                tgtObj.processed = True
+                tgtObj.isProcessed = True
             # If the tgtObj unprocessed list is populated
             # This catches anything found in the above scan, or archives passed as targets
             if tgtObj.unprocessed:
@@ -136,7 +136,7 @@ def chkTargets(targets, sXtrct, msg):
                     # Check to see if the tgtObj archives list is populated
                     tgtObj.hasArchs()
                     # Mark the tgtObj as having been processed
-                    tgtObj.processed = True
+                    tgtObj.isProcessed = True
 
     # Validates a target to prepare it for romArchive
     def _validateTarget(archive):
@@ -189,12 +189,12 @@ def chkTargets(targets, sXtrct, msg):
     for tgtObj in tgtList:
         try:
             # If the target hasn't already been processed, process it
-            if not tgtObj.processed:
+            if not tgtObj.isProcessed:
                 _gatherTargets(tgtObj, sXtrct)
         except PermissionError as e:
                 m.er("Permission Error: Cannot Access", str(tgtObj.path))
                 m.ei("Please verify you have permissions to access this file")
-                tgtObj.processed = True
+                tgtObj.isProcessed = True
                 continue
         except ValueError as e:
                 m.er(str(e))
