@@ -46,8 +46,7 @@ def tests():
     badTarget()                        # Tests targeting a non-archive
     badTargetSys()                     # Tests targeting a system file
 
-############### TESTS BEGIN HERE #################
-##### TEST HELPER FUNCTION ####
+############### TEST HELPER FUNCTIONS ###############
 def dumpTargets(tgtList):
     print(f"\n--- chkTargets returned {len(tgtList)} target(s) ---")
     for key, tgt in tgtList.items():
@@ -108,6 +107,7 @@ def assertTargets(tgtList, expected, checkTotal=False, checkSXtrct=False, checkA
                 f"Returned:  {returnedInvalid}\n"
                 f"Expected:  {expInvalid}")
 
+############### TESTS BEGIN HERE ###############
 # Simulates a single archive being targeted
 # chkTargets should return a tgtObj with the single arhive
 def singleArchive():
