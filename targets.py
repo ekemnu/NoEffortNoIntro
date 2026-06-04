@@ -38,7 +38,6 @@ class _target:
     
     # Return the archives list for literation
     def __iter__(tgt):
-        # TODO have this remove the invalid files from the list before iteration
         return iter(tgt.archives)
     
     # Save archive path objects to target object for use in main
