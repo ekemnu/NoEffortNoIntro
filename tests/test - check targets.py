@@ -39,7 +39,7 @@ def tests():
     directoryWithBadGame()             # Tests skip extract if there is a bad file
     directoryWithBadGamesPermissions() # Tests a permissions error with a file in skip extract mode
     directoryWithBadPermsSXstrct()     # Tests a directory with bad permissions in skip extract mode
-    #--brktest->directoryEmptyXStrct()             # Tests if called on an empty directory in skip extract mode                 
+    directoryEmptyXStrct()             # Tests if called on an empty directory in skip extract mode                 
     directoryWithBadPermissions()      # Tests handling a target direcory with bad permissions
     archiveWithBadPermissions()        # Tests hanlding of archives neni can't access
     archiveWithAPasswprd()             # Tests handling of a password protected archive
@@ -256,32 +256,32 @@ def multiDirectoryAndArchives():
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock file(s) to be passed to chkTargets
-    targets  = [ f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set).zip",
-                 f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)2.zip",
-                 f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)3.zip",
-                 f"{testLocation}directory_with_directories_with sets/directory1",
-                 f"{testLocation}directory_with_directories_with sets/directory2" ]
+    targets  = [ f"{testLocation}directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set).zip",
+                 f"{testLocation}directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)2.zip",
+                 f"{testLocation}directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)3.zip",
+                 f"{testLocation}directory_with_directories_with_sets/directory1",
+                 f"{testLocation}directory_with_directories_with_sets/directory2" ]
     # Call chkTargets to run the test
     tgtList  = chkTargets(targets, False, m)
     dumpTargets(tgtList)
     assert len(tgtList) == 3
     assertTargets(tgtList, [
     # Results to test against
-    { "path":       Path(testLocation, "directory_with_directories_with sets"),
-      "archives": [ Path(testLocation, "directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set).zip"),
-                    Path(testLocation, "directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)2.zip"),
-                    Path(testLocation, "directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+    { "path":       Path(testLocation, "directory_with_directories_with_sets"),
+      "archives": [ Path(testLocation, "directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3 
     },
-    { "path":       Path(testLocation, "directory_with_directories_with sets/directory1"),
-      "archives": [ Path(testLocation, "directory_with_directories_with sets/directory1/Archive - With 3 Top Level Games (Normal Set).zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory1/Archive - With 3 Top Level Games (Normal Set)2.zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory1/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+    { "path":       Path(testLocation, "directory_with_directories_with_sets/directory1"),
+      "archives": [ Path(testLocation, "directory_with_directories_with_sets/directory1/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory1/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory1/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3 
-    },{ "path":     Path(testLocation, "directory_with_directories_with sets/directory2"),
-      "archives": [ Path(testLocation, "directory_with_directories_with sets/directory2/Archive - With 3 Top Level Games (Normal Set).zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory2/Archive - With 3 Top Level Games (Normal Set)2.zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory2/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+    },{ "path":     Path(testLocation, "directory_with_directories_with_sets/directory2"),
+      "archives": [ Path(testLocation, "directory_with_directories_with_sets/directory2/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory2/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory2/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3 
     } ], checkTotal=True)
     m.st("Test completed Sucessfully")
@@ -293,33 +293,33 @@ def multiDirectoryBeforeArchives():
     if not os.path.isdir(testLocation):
         setupEnv()
     # Mock file(s) to be passed to chkTargets
-    targets  = [ f"{testLocation}directory_with_directories_with sets/directory1",
-                 f"{testLocation}directory_with_directories_with sets/directory2",
-                 f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set).zip",
-                 f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)2.zip",
-                 f"{testLocation}directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)3.zip"  ]
+    targets  = [ f"{testLocation}directory_with_directories_with_sets/directory1",
+                 f"{testLocation}directory_with_directories_with_sets/directory2",
+                 f"{testLocation}directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set).zip",
+                 f"{testLocation}directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)2.zip",
+                 f"{testLocation}directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)3.zip"  ]
     # Call chkTargets to run the test
     tgtList  = chkTargets(targets, False, m)
     dumpTargets(tgtList)
     assert len(tgtList) == 3
     assertTargets(tgtList, [
     # Results to test against
-    { "path":       Path(testLocation, "directory_with_directories_with sets/directory1"),
-      "archives": [ Path(testLocation, "directory_with_directories_with sets/directory1/Archive - With 3 Top Level Games (Normal Set).zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory1/Archive - With 3 Top Level Games (Normal Set)2.zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory1/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+    { "path":       Path(testLocation, "directory_with_directories_with_sets/directory1"),
+      "archives": [ Path(testLocation, "directory_with_directories_with_sets/directory1/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory1/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory1/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3 
     },
-    { "path":     Path(testLocation, "directory_with_directories_with sets/directory2"),
-      "archives": [ Path(testLocation, "directory_with_directories_with sets/directory2/Archive - With 3 Top Level Games (Normal Set).zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory2/Archive - With 3 Top Level Games (Normal Set)2.zip"),
-                    Path(testLocation, "directory_with_directories_with sets/directory2/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+    { "path":     Path(testLocation, "directory_with_directories_with_sets/directory2"),
+      "archives": [ Path(testLocation, "directory_with_directories_with_sets/directory2/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory2/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/directory2/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3 
     },
-    { "path":       Path(testLocation, "directory_with_directories_with sets"),
-      "archives": [ Path(testLocation, "directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set).zip"),
-                    Path(testLocation, "directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)2.zip"),
-                    Path(testLocation, "directory_with_directories_with sets/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
+    { "path":       Path(testLocation, "directory_with_directories_with_sets"),
+      "archives": [ Path(testLocation, "directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)2.zip"),
+                    Path(testLocation, "directory_with_directories_with_sets/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3 
     } ], checkTotal=True)
     m.st("Test completed Sucessfully")
@@ -482,7 +482,7 @@ def directoryWithBadPermsSXstrct():
     # Compile list in output format to check against
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, True, m)
-    os.chmod(testLocation + "directory_with_games/Fake Game (Vatican) (La).zip", 0o777)
+    os.chmod(testLocation + "directory_with_junk", 0o777)
     dumpTargets(tgtList)
     assert len(tgtList) == 1
     assertTargets(tgtList, [
@@ -511,7 +511,7 @@ def directoryEmptyXStrct():
     { "path":           Path(testLocation, "directory_with_junk"),
       "archives":     [ ],
       "invalidFiles": [ ],
-      "total": 0 }
+      "total": 0, "sXtrct":   True }
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
 
 # Simulates a single archive being targeted that has bad permissions
@@ -526,6 +526,7 @@ def archiveWithBadPermissions():
     targets  = [ f"{testLocation}Archive - With Bad Permissions.zip" ]
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, False, m)
+    os.chmod(testLocation + "Archive - With Bad Permissions.zip", 0o777)
     dumpTargets(tgtList)
     assert len(tgtList) == 1
     assertTargets(tgtList, [
@@ -535,7 +536,6 @@ def archiveWithBadPermissions():
       "invalidFiles": [ f"{testLocation}Archive - With Bad Permissions.zip" ],
       "total": 0 },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
-    os.chmod(testLocation + "Archive - With Bad Permissions.zip", 0o777)
     m.st("Test completed Sucessfully")
 
 # Simulates a single archive being targeted that has a passwordthat has bad permissions
@@ -565,6 +565,7 @@ def directoryWithBadPermissions():
     targets  = [ f"{testLocation}directory_with_junk" ]
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, False, m)
+    os.chmod(testLocation + "directory_with_junk", 0o777)
     dumpTargets(tgtList)
     assert len(tgtList) == 1
     assertTargets(tgtList, [
@@ -574,7 +575,6 @@ def directoryWithBadPermissions():
       "invalidFiles": [ ],
       "total": 0 },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
-    os.chmod(testLocation + "directory_with_junk", 0o777)
     m.st("Test completed Sucessfully")
 
 # Simulates a single invalid archive being targeted
@@ -684,6 +684,7 @@ def oneBadArchivePermissions():
                 f"{testLocation}Archive - With Bad Permissions.zip" ]    
     # Call chkTargets to run the test
     tgtList = chkTargets(targets, False, m)
+    os.chmod(testLocation + "Archive - With Bad Permissions.zip", 0o777)
     dumpTargets(tgtList)
     assert len(tgtList) == 2
     assertTargets(tgtList, [
@@ -699,7 +700,6 @@ def oneBadArchivePermissions():
       "invalidFiles": [ Path(testLocation, "Archive - With Bad Permissions.zip") ],
       "total": 0 },
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
-    os.chmod(testLocation + "Archive - With Bad Permissions.zip", 0o777)
     m.st("Test completed Sucessfully")
 
 # Simulates an empty target list

@@ -1,8 +1,8 @@
-import os
-from pathlib import Path
-from collections import deque
-from dataclasses import dataclass, field
-from typing import ClassVar
+import os                                   # Used to check target premissions
+from pathlib import Path                    # Used to handle target filesystem paths
+from collections import deque               # Used to handle target queue
+from dataclasses import dataclass, field    # Used for target objects
+from typing import ClassVar                 # Used for target objects
 
 @dataclass
 class _target:
