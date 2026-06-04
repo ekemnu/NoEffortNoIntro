@@ -173,7 +173,7 @@ def directoryWithSets():
     ], checkTotal=True)
     m.st("Test completed Sucessfully")
 
-# Simulates a directory with sets being targeted
+# Simulates a directory with sets as symlinks being targeted
 # chkTargets should return a tgtObj with the arhives found in the directory
 def directoryWithSymlinks():
     m.st("\n\n\nBegining Test directoryWithSymlinks")
@@ -215,7 +215,7 @@ def archiveWithLongName():
     m.st("Test completed Sucessfully")
 
 # Simulates targeting multiple directories with archive sets
-# chkTargets should return a tgtObj with the archives
+# chkTargets should return tgtObjs with the archives
 def multiDirectoryWithSets():
     m.st("\n\n\nBegining Test multiDirectoryWithSets")
     if not os.path.isdir(testLocation):
@@ -228,10 +228,10 @@ def multiDirectoryWithSets():
     dumpTargets(tgtList)
     assert len(tgtList) == 2
     assertTargets(tgtList, [
-    { "path":       Path(testLocation, "directory_with_sets").resolve(),
-      "archives": [ Path(testLocation, "directory_with_sets/Archive - With 3 Top Level Games (Normal Set).zip").resolve(), 
-                    Path(testLocation, "directory_with_sets/Archive - With 3 Top Level Games (Normal Set)2.zip").resolve(), 
-                    Path(testLocation, "directory_with_sets/Archive - With 3 Top Level Games (Normal Set)3.zip").resolve() ],
+    { "path":       Path(testLocation, "directory_with_sets"),
+      "archives": [ Path(testLocation, "directory_with_sets/Archive - With 3 Top Level Games (Normal Set).zip"),
+                    Path(testLocation, "directory_with_sets/Archive - With 3 Top Level Games (Normal Set)2.zip"), 
+                    Path(testLocation, "directory_with_sets/Archive - With 3 Top Level Games (Normal Set)3.zip") ],
       "total": 3
     },
     { "path":       Path(testLocation, "directory_with_junk_and_sets"),
@@ -242,8 +242,8 @@ def multiDirectoryWithSets():
     } ], checkTotal=True)
     m.st("Test completed Sucessfully")
 
-# Simulates a multiple directories with archives being targeted
-# chkTargets should return a tgtObj with the archives
+# Simulates a multiple directories with archives and multiple archives being targeted
+# chkTargets should return tgtObjs with the archives
 def multiDirectoryAndArchives():
     m.st("\n\n\nBegining Test multiDirectoryAndArchives")
     if not os.path.isdir(testLocation):
@@ -318,7 +318,7 @@ def multiDirectoryBeforeArchives():
     m.st("Test completed Sucessfully")
 
 # Simulates a directory with no archives
-# chkTargets should ignore everything and return an empty list
+# chkTargets should ignore everything and return a tgtObj with no archives
 def directoryEmpty():
     m.st("\n\n\nBegining Test directoryEmpty")
     if not os.path.isdir(testLocation):
@@ -382,7 +382,7 @@ def directoryWithGames():
     m.st("Test completed Sucessfully")
     
 # Simulates skip extraction mode, targeting parent of multiple already extracted sets
-# chkTargets should return a tgtObj of all archives in the directory 
+# chkTargets should return tgtObjs of all archives in the directories 
 def multiDirectoryWithGames():
     m.st("\n\n\nBegining Test multiDirectoryWithGames")
     if not os.path.isdir(testLocation):
@@ -414,7 +414,7 @@ def multiDirectoryWithGames():
     m.st("Test completed Sucessfully")
 
 # Simulates a directory with a bad zip file in skip extraction mode
-# chkTargets should raise and extection and stop
+# chkTargets should raise and exception and continue, returning tgtObj with invalid file
 def directoryWithBadGame():
     m.st("\n\n\nBegining Test directoryWithBadGame")
     if not os.path.isdir(testLocation):
@@ -437,7 +437,7 @@ def directoryWithBadGame():
     m.st("Test completed Sucessfully")
 
 # Simulates a single archive being targeted that has bad permissions
-# chkTargets should raise a PermissionError
+# chkTargets should raise a PermissionError, and return a tgtObj with bad file in invalid
 def directoryWithBadGamesPermissions():
     m.st("\n\n\nBegining Test directoryWithBadGamesPermissions")
     if not os.path.isdir(testLocation):
@@ -463,7 +463,7 @@ def directoryWithBadGamesPermissions():
     m.st("Test completed Sucessfully")
 
 # Simulates a directory being targeted that has bad permissions
-# chkTargets should raise a PermissionError
+# chkTargets should raise a PermissionError, and return tgtObj with no archives
 def directoryWithBadPermsSXstrct():
     m.st("\n\n\nBegining Test directoryWithBadPermsSXstrct")
     if not os.path.isdir(testLocation):
@@ -488,7 +488,7 @@ def directoryWithBadPermsSXstrct():
     m.st("Test completed Sucessfully")
     
 # Simulates a directory with no roms in skip extraction mode
-# chkTargets should ignore everything and return an empty list
+# chkTargets should ignore everything and return a tgtObj with no archives
 def directoryEmptyXStrct():
     m.st("\n\n\nBegining Test directoryEmptyXStrct")
     if not os.path.isdir(testLocation):
@@ -508,7 +508,7 @@ def directoryEmptyXStrct():
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
 
 # Simulates a single archive being targeted that has bad permissions
-# chkTargets should raise a PermissionError
+# chkTargets should raise a PermissionError, return tgtObj with file as invalid
 def archiveWithBadPermissions():
     m.st("\n\n\nBegining Test archiveWithBadPermissions")
     if not os.path.isdir(testLocation):
@@ -531,7 +531,7 @@ def archiveWithBadPermissions():
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     m.st("Test completed Sucessfully")
 
-# Simulates a single archive being targeted that has a passwordthat has bad permissions
+# Simulates a single archive being targeted that has a password
 # chkTargets should return no tgtObjs
 def archiveWithAPasswprd():
     m.st("\n\n\nBegining Test archiveWithAPasswprd")
@@ -547,7 +547,7 @@ def archiveWithAPasswprd():
     m.st("Test completed Sucessfully")
 
 # Simulates a single archive being targeted that has bad permissions
-# chkTargets should raise a PermissionError
+# chkTargets should raise a PermissionError, return tgtObj with no archives
 def directoryWithBadPermissions():
     m.st("\n\n\nBegining Test directoryWithBadPermissions")
     if not os.path.isdir(testLocation):
@@ -570,8 +570,8 @@ def directoryWithBadPermissions():
     ], checkTotal=True, checkSXtrct=True, checkInvalidFiles=True)
     m.st("Test completed Sucessfully")
 
-# Simulates a single invalid archive being targeted
-# chkTargets should raise a ValueError
+# Simulates a single invalid archive being targeted (minimum possible archive size)
+# chkTargets should raise a ValueError, return tgtObj with file as invalid
 def archiveWithSmallSize():
     m.st("\n\n\nBegining Test archiveWithSmallSize")
     if not os.path.isdir(testLocation):
@@ -592,7 +592,7 @@ def archiveWithSmallSize():
     m.st("Test completed Sucessfully")
 
 # Simulates a invalid archive mixed in with good archives
-# chkTargets return a tgtObj excluding the bad file
+# chkTargets return a tgtObj with bad file as invalid
 def oneBadArchive():
     m.st("\n\n\nBegining Test oneBadArchive")
     if not os.path.isdir(testLocation):
@@ -662,8 +662,8 @@ def archiveSameTwice():
     }, ], checkTotal=True)
     m.st("Test completed Sucessfully")
 
-# Simulates a invalid archive mixed in with good archives
-# chkTargets return a tgtObj excluding the bad file
+# Simulates a invalid archive mixed in with good archives (bad permissions)
+# chkTargets return a tgtObj with the bad file as invalid
 def oneBadArchivePermissions():
     m.st("\n\n\nBegining Test oneBadArchivePermissions")
     if not os.path.isdir(testLocation):
@@ -732,7 +732,7 @@ def badTarget():
     m.st("Test completed Sucessfully")
 
 # Simulates a single system file being targeted
-# chkTargets should return a single tgtObj with file in invalid list
+# chkTargets should return no tgtObjs
 def badTargetSys():
     m.st("\n\n\nBegining Test badTarget")
     if not os.path.isdir(testLocation):
