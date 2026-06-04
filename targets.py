@@ -196,12 +196,14 @@ def chkTargets(targets, sXtrct, msg):
                 continue
         except ValueError as e:
                 m.er(str(e))
-                m.ei("Please verify this is a valid archive file")   
+                m.ei("Please verify this is a valid archive file")
+                tgtObj.isProcessed = True
                 continue
         except TargetNotFound as e:
                 m.er(str(e))
                 m.ei("Please verify the target")
                 m.st("Continuting to next target")
+                tgtObj.isProcessed = True
                 continue
     
     ### TODO let neni deal with this
