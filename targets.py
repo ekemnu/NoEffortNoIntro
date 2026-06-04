@@ -25,16 +25,16 @@ class _target:
     
     # Outputs status of target object for debugging
     def __repr__(tgt):
-        return (f"\n_target:"
-                f"\n  name:         {tgt.name}"
-                f"\n  path:         {tgt.path}"
-                f"\n  archives:     {tgt.archives}"
-                f"\n  invalidFiles: {tgt.invalidFiles}"
-                f"\n  unprocessed:  {tgt.unprocessed}"
-                f"\n  total:        {tgt.total}"
-                f"\n  sXtrct:       {tgt.skipExtraction}"
-                f"\n  hasArchives:  {tgt.hasArchives}"
-                f"\n  isProcessed:  {tgt.isProcessed}")
+        return ( f"\n_target:"
+                 f"\n  name:         {tgt.name}"
+                 f"\n  path:         {tgt.path}"
+                 f"\n  archives:     {tgt.archives}"
+                 f"\n  invalidFiles: {tgt.invalidFiles}"
+                 f"\n  unprocessed:  {tgt.unprocessed}"
+                 f"\n  total:        {tgt.total}"
+                 f"\n  sXtrct:       {tgt.skipExtraction}"
+                 f"\n  hasArchives:  {tgt.hasArchives}"
+                 f"\n  isProcessed:  {tgt.isProcessed}" )
     
     # Return the archives list for literation
     def __iter__(tgt):
