@@ -8,25 +8,26 @@ from rom import romFile         # Used to store roms as objects
 ##### Stores information about the rom collection, and performs operations on it
 class romArchive():
     ##### Variables that are specific to the instanced object
-    def __init__(ra, zipFPath, outDest, relVers, homeRgn, ptend, sXtrct, noAudit, msg, exeTime):
+    def __init__(ra, tgtObj, path, outDest, relVers, homeRgn, ptend, noAudit, msg, exeTime):
         ra.m         = msg                          # Messenger for writing lines to terminal
-        ra.zipFPath  = zipFPath                     # Stores the full path of the target archive
-        ra.parentDir = zipFPath.parent              # Stores the directory in which the target archive is located
-        ra.zipFn     = zipFPath.name                # Stores string full name of the target archive
-        ra.zipFnRoot = zipFPath.stem                # Stores string with the name of the target archive without extension
-        ra.zipFnExt  = zipFPath.suffix              # Stores string with the extension of the target archive
-        ra.outDest   = outDest or zipFPath          # Stores the parent dir of the processed roms final destination
+        ra.tgtObj    = tgtObj                       # Stores information about the target
+        ra.zipFPath  = path                         # Stores the full path of the target archive
+        ra.parentDir = path.parent                  # Stores the directory in which the target archive is located
+        ra.zipFn     = path.name                    # Stores string full name of the target archive
+        ra.zipFnRoot = path.stem                    # Stores string with the name of the target archive without extension
+        ra.zipFnExt  = path.suffix                  # Stores string with the extension of the target archive
+        ra.outDest   = outDest or path.parent       # Stores the parent dir of the processed roms final destination
         ra.relVers   = str(relVers)                 # Stores No-Intro release version information
         ra.exeTime   = exeTime                      # Time execution started
-        ra.romList = {      # Stores a list of all decompressed files in the extraction directory
-                "unSrted": [], "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
-        ra.colTags = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] }           # Stores scraped tags
-        ra.totals = {"USA": 0, "Japan": 0, "Europe": 0, "World": 0, "UnKwn": 0, "Total": 0, "Tags": { } } # Stores totals
+        ra.romList   = {      # Stores a list of all decompressed files in the extraction directory
+                       "unSrted": [], "USA": [], "Japan": [], "Europe": [], "World": [], "UnKwn": [] }
+        ra.colTags   = { "unSrted": [], "regionTags" : [], "languageTags" : [], "miscTags" : [] }           # Stores scraped tags
+        ra.totals    = {"USA": 0, "Japan": 0, "Europe": 0, "World": 0, "UnKwn": 0, "Total": 0, "Tags": { } } # Stores totals
         ra.extractQueue = Queue()
-        ra.skipExtract = sXtrct
-        ra.pretend = ptend
-        ra.homeRgn = homeRgn
-        ra.noAudit = noAudit
+        ra.skipExtract = tgtObj.skipExtraction
+        ra.pretend   = ptend
+        ra.homeRgn   = homeRgn
+        ra.noAudit   = noAudit
         ra.processed = False
 
         if ra.zipFnExt.lower() != ".zip":
@@ -48,9 +49,7 @@ class romArchive():
                 ra.outDest = ra.parentDir.joinpath(ra.zipFnRoot)
             
     # Processes the current target archive when called
-    def process(ra):
-        # Decompress the target archive
-        #ra.unzip()
+    def process(ra, threader):
         # Gather a list of all files extracted from the target archive
         ra.getFiles()
         # Gather information about tfrom collections import Counterhe extracted files
@@ -59,9 +58,11 @@ class romArchive():
         ra.cntRoms()
         ra.cntTags()
         # Move the files to the sort regions
-        #ra.moveRoms()
+        ra.prepMove()
         # Moves the processed archive to output destination
-        ra.move()
+        #ra.move()
+        # threaded move
+        threader(ra, ra.m)
         # Writes the audit log documenting changes made to final destination
         ra.auditLog()
         # Mark the archive as fully processed

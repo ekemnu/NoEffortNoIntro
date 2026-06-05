@@ -62,6 +62,7 @@ class _target:
 
 def chkTargets(targets, sXtrct, msg):    
     m = msg
+    targets = [ targets, sXtrct ]
     tgtList = [ ]
 
     class TargetNotFound(Exception):
@@ -155,40 +156,40 @@ def chkTargets(targets, sXtrct, msg):
 
     m.st("Checking target(s)...")
     # Create target objets from target(s) passed at runtime
-    for target in targets:
-        # Get the resolved path to the target
-        target = Path(target).resolve()
-        
-        # If the passed target is a dir, check if there is already an instance
-        # If there is an instance, use it, if not create one
-        if target.is_dir():
-            if str(target) not in _target.instances:
-                tgtO = _target(path=target, skipExtraction=sXtrct)
-            else:
-                tgtO = _target.instances[str(target)]
-            # If the passed directory isn't in the target processing queue, add it
-            if tgtO not in tgtList:
-                tgtList.append(tgtO)
-        # If the passed target is a file, check if there is already a parent instance
-        # If there is a object instance for the parent directory, use it, if not create one
-        if target.is_file():
-            _resdParent = target.parent.resolve()
-            if str(_resdParent) not in _target.instances:
-                tgtO = _target(path=_resdParent, skipExtraction=sXtrct)
-            else:
-                tgtO = _target.instances[str(_resdParent)]
-            # Add the processed passed archive to the object unprocessed list for _gatherTargets
-            tgtO.unprocAdd(target)
-            # If the tgtObj isn't already in the target queue, add it
-            if tgtO not in tgtList:
-                tgtList.append(tgtO)
+    for _i, _tL in enumerate(targets):
+        for target in _tL: 
+            # If we're processing the skip extract list, set sXtrct to TRUE
+            setSXtrct = (_i == 1)
+            # If the passed target is a dir, check if there is already an instance
+            # If there is an instance, use it, if not create one
+            if target.is_dir():
+                if str(target) not in _target.instances:
+                    tgtO = _target(path=target, skipExtraction=setSXtrct)
+                else:
+                    tgtO = _target.instances[str(target)]
+                # If the passed directory isn't in the target processing queue, add it
+                if tgtO not in tgtList:
+                    tgtList.append(tgtO)
+            # If the passed target is a file, check if there is already a parent instance
+            # If there is a object instance for the parent directory, use it, if not create one
+            if target.is_file():
+                _resdParent = target.parent.resolve()
+                if str(_resdParent) not in _target.instances:
+                    tgtO = _target(path=_resdParent, skipExtraction=setSXtrct)
+                else:
+                    tgtO = _target.instances[str(_resdParent)]
+                # Add the processed passed archive to the object unprocessed list for _gatherTargets
+                tgtO.unprocAdd(target)
+                # If the tgtObj isn't already in the target queue, add it
+                if tgtO not in tgtList:
+                    tgtList.append(tgtO)
     
     # Processes tgtOBjects, scanning for archives within it and its subdirectories
     for tgtObj in tgtList:
         try:
             # If the target hasn't already been processed, process it
             if not tgtObj.isProcessed:
-                _gatherTargets(tgtObj, sXtrct)
+                _gatherTargets(tgtObj, setSXtrct)
         except PermissionError as e:
                 m.er("Permission Error: Cannot Access", str(tgtObj.path))
                 m.ei("Please verify you have permissions to access this file")
@@ -217,4 +218,4 @@ def chkTargets(targets, sXtrct, msg):
     #   raise TargetNotFound (f"target not found")
     
     # Return the list of full paths to the targets
-    return _target.instances
+    return _target.instances.values()

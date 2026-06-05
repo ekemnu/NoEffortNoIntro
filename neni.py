@@ -41,21 +41,20 @@
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
-import shutil                   # Used to move and unzip files and archives
 from pathlib import Path        # Used to perform os independent path manipulation
 from datetime import datetime   # Used to record the date and time script was run
 from zipfile import ZipFile
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue, Empty
 from messenger import messenger # Used to create terminal status messages during runtime
-from targets import _target, chkTargets
+from targets import chkTargets
 from archive import romArchive  # User to manage actions of archives
 
 # Gets the arguments passed to the script at invocation
 def argParser():
     parser = argparse.ArgumentParser( description='Processes given No-Intro archive(s), sorts by region into sub directories',
-                        epilog='Written by John Loreth 2024')
-    parser.add_argument('targets', nargs='+')
+                        epilog='Written by John Loreth 2026')
+    parser.add_argument('targets', nargs='*', default=[ ])
     parser.add_argument('-a', '--noaudit', action=argparse.BooleanOptionalAction, dest='noAudit',
                         help='Skips writing audit file')
     parser.add_argument('-o', '--output-destination', action='store', nargs='?', dest='outDest',
@@ -63,27 +62,77 @@ def argParser():
     parser.add_argument('--debug', action=argparse.BooleanOptionalAction,
                         help='Prints debug messages to the console')
     parser.add_argument('-t', '--home-turf', action='store', nargs='?',
-                        default='USA', dest='homeRgn', choices=['USA', 'Europe', 'World'],
+                        default='USA', dest='homeRgn',
                         help='Specifies the home sort region (default: USA)')
+    parser.add_argument('-l', '--language', action='store', nargs='?',
+                        default='En', dest='language',
+                        help='Specifies the prefered language (default: En)')
     parser.add_argument('-p', '--pretend', action=argparse.BooleanOptionalAction, dest='ptend',
                         help='Runs the script without making any changes')
     parser.add_argument('-r', '--release', action='store', dest='relVers',
                         help='Specify No-Intro release information to include after processing')
-    #TODO make this for pointing to an already extracted dir of no-intro roms, x implies no o
-    parser.add_argument('-x', '--skip-extraction', action=argparse.BooleanOptionalAction, dest='sXtrct',
-                        help='Skips extraction of the target archive, looks for a directory with that name to process')
+    parser.add_argument('-x', '--skip-extraction',  action='append', nargs='?', dest='sXtrct',
+                        default=[ ], help='Skips extraction of the target archive, looks for a directory with that name to process')
     parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction,
                         help='Prints additional information to the console')
     parser.add_argument('--version', action='version', version='NenI 0.26')
     
     # Store the flags as an object
     flags = parser.parse_args()
+
+    # Error if no targets or sXtract targets are passed
+    if not flags.targets and not flags.sXtrct:
+        raise ValueError ("Must specifiy a valid target")
+    
     # If the final output destination has been given save absolute path
     if flags.outDest:
-        flags.outDest = Path(flags.outDest)
-    # Pretend requires sXtract
-    if flags.ptend:
-        flags.sXtrct = True
+        flags.outDest = Path(flags.outDest).resolve()
+    
+    # Process targets
+    resolvedTgts = [ ]
+    for target in flags.targets:
+        target = Path(target).resolve()
+        if not (target.is_file() or target.is_dir()):
+            raise ValueError (f"target {target} is not a file or directory")
+        resolvedTgts.append(target)
+    flags.targets.clear()
+    flags.targets = resolvedTgts
+
+    # Process skip extraction targets
+    if flags.sXtrct:
+        resolvedSXTgts = [ ]
+        for sxTarget in flags.sXtrct:
+            sxTarget = Path(sxTarget).resolve()
+            if not sxTarget.is_file() and not sxTarget.is_dir():
+                raise ValueError (f"skip extraction target {sxTarget} not a file or directory")
+            resolvedSXTgts.append(sxTarget)
+        flags.sXtrct.clear()
+        flags.sXtrct = resolvedSXTgts
+    
+    # Handles home turf region setting
+    if flags.homeRgn:
+        try:
+           rf
+        except:
+          from rom import romFile as rf
+        finally:
+            if flags.homeRgn not in rf.romRegions:
+                raise ValueError (f"{flags.homeRgn} is not a valid rom region")
+    else:
+        flags.homeRgn = "USA"
+    
+    # Handles language preference setting
+    if flags.language:
+        try:
+           rf
+        except:
+          from rom import romFile as rf
+        finally:
+            if flags.language not in rf.romLang:
+                raise ValueError (f"{flags.language} is not a valid rom language")
+    else:
+        flags.language = "En"
+   
     return flags
 
 def threader(archive, msg):
@@ -122,6 +171,30 @@ def threader(archive, msg):
         for future in futures:
             future.result()
 
+def createArchObj(tgtObj, archive, flags, m, now):
+    archObj = romArchive(
+        # Stores the target object for the archive
+        tgtObj,
+        # Stores the resolved path object for the archive
+        archive,
+        # Sets the user defined processed output destination
+        flags.outDest, 
+        # Sets the No-Intro release version information about the archive
+        flags.relVers,
+        # Sets the user defined home region for file sort
+        flags.homeRgn, 
+        # Sets the pretend flag; process extracted files only, skip move
+        flags.ptend,
+        # Skips the creation of the audit file
+        flags.noAudit,
+        # Messenger
+        m,
+        # Execeution time TODO: Break out auditfile to it's own thing
+        now.strftime("%m/%d/%Y %H:%M:%S")
+    )
+    return archObj
+
+
 # Defines the order subroutines are executed
 def mainRoutine():
     now = datetime.now()
@@ -136,49 +209,28 @@ def mainRoutine():
     ###      if there is a duplicate archive, add it to the romlist instead, again checking for duplicates
     ###      this will skip getting files twice when in skip extraction mode
     
-    for target in chkTargets(flags.targets, flags.sXtrct, m):
-        m.st("Working on target archive <", target.name, ">...")
-        # Initializes target archive object with user preferences
-        archive = romArchive(
-            # Stores the full path of the target archive
-            target,
-            # Sets the user defined processed output destination
-            flags.outDest, 
-            # Sets the No-Intro release version information about the archive
-            flags.relVers,
-            # Sets the user defined home region for file sort
-            flags.homeRgn, 
-            # Sets the pretend flag; process extracted files only, skip move
-            flags.ptend, 
-            # Skips extraction; use to point at directory full of files
-            flags.sXtrct,
-            # Skips the creation of the audit file
-            flags.noAudit,
-            # Messenger
-            m,
-            # Execeution time TODO: Break out auditfile to it's own thing
-            now.strftime("%m/%d/%Y %H:%M:%S")
-        )
-        # Processes the archive, extracting it, processing the files, and moving it to the final location
-
-        # Gather a list of all files extracted from the target archive
-        archive.getFiles()
-        # Gather information about the extracted files
-        archive.processRoms()
-        # Total the files and scraped tags in each category
-        archive.cntRoms()
-        archive.cntTags()
-        # Move the files to the sort regions
-        archive.prepMove()
-        # Moves the processed archive to output destination
-        #archive.move()
-        # threaded move
-        threader(archive, m)
-        # Writes the audit log documenting changes made to final destination
-        archive.auditLog()
-        # Mark the archive as fully processed
-        archive.markProcessed()
+    try:
+        targets = chkTargets(flags.targets, flags.sXtrct, m)
+    except ValueError as e:
+        print(e)
+    
+    for tgtObj in targets:
+        if not tgtObj.hasArchives:
+            continue
         
+        if tgtObj.skipExtraction:
+            m.st("Preparing target directory <", tgtObj.path, ">...")
+            archObj = createArchObj(tgtObj, tgtObj.path, flags, m, now)
+            archObj.romList["unSrted"] = tgtObj.archives
+            archObj.process(threader)
+        else:
+            for archive in tgtObj.archives:
+                m.st("Preparing target archive <", archive.name, ">...")
+                # Initializes target archive object with user preferences
+                
+                archObj = createArchObj(tgtObj, archive, flags, m, now)
+                archObj.process(threader)
+    
     # Exit the script after successful processing of all archives and files
     m.ex("Successful Completion")
     sys.exit(0)
