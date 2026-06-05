@@ -4,6 +4,9 @@ from collections import deque               # Used to handle target queue
 from dataclasses import dataclass, field    # Used for target objects
 from typing import ClassVar                 # Used for target objects
 
+class TargetNotFound(Exception):
+        pass
+
 @dataclass
 class _target:
     name:           str  = field(init=False)                        # The directory name
@@ -64,9 +67,6 @@ def chkTargets(targets, sXtrct, msg):
     m = msg
     targets = [ targets, sXtrct ]
     tgtList = [ ]
-
-    class TargetNotFound(Exception):
-        pass
 
     _target.instances.clear()
     

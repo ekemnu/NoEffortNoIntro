@@ -30,23 +30,23 @@ class romArchive():
         ra.noAudit   = noAudit
         ra.processed = False
 
-        if ra.zipFnExt.lower() != ".zip":
+        #if ra.zipFnExt.lower() != ".zip":
             # If the extension is not .zip
-            print("Error: Target File is not a Zip Archive")
-            print("       Check that you've supplied a valid path to a No-Intro zip archive and run the script again")
-            print("         Ex: $ neni /home/user/Downloads/archive.zip")
-            quit(1)
-        else:
+        #    print("Error: Target File is not a Zip Archive")
+        #    print("       Check that you've supplied a valid path to a No-Intro zip archive and run the script again")
+        #    print("         Ex: $ neni /home/user/Downloads/archive.zip")
+        #    quit(1)
+        #else:
             # If the extension is .zip
-            ra.m.st("Processing Archive", ra.zipFn + "....")
+        #    ra.m.st("Processing Archive", ra.zipFn + "....")
             # Handle user output destination flag
-            if ra.outDest:
-                ra.outDest = ra.outDest.joinpath(ra.zipFnRoot)
-            else:
-                # Sets the final destination to be the same as the target archive
-                ra.m.wn("Output Destination Not Specified; Using Source Directory")
-                ra.m.de("outdest not set")
-                ra.outDest = ra.parentDir.joinpath(ra.zipFnRoot)
+        if ra.outDest:
+            ra.outDest = ra.outDest.joinpath(ra.zipFnRoot)
+        else:
+            # Sets the final destination to be the same as the target archive
+            ra.m.wn("Output Destination Not Specified; Using Source Directory")
+            ra.m.de("outdest not set")
+            ra.outDest = ra.parentDir.joinpath(ra.zipFnRoot)
             
     # Processes the current target archive when called
     def process(ra, threader):
@@ -69,12 +69,17 @@ class romArchive():
         ra.markProcessed()
 
     def getFiles(ra):        
-        ra.m.st("Gathering Files Information From Target Archive(s)...")
-        with ZipFile(ra.zipFPath) as zf:            
-            # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
-            for r in zf.namelist():
-                if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
-                    ra.romList["unSrted"].append(r)
+        ra.m.st("Gathering Files Information From Target Archive...")
+        if ra.skipExtract:
+            return 0
+        try:
+            with ZipFile(ra.zipFPath) as zf:            
+                # Get a list of files from the target archive ToC, add to unsorted list, exclude [BIOS] files
+                for r in zf.namelist():
+                    if r.lower().endswith(".zip") and not r.startswith('[BIOS]'):
+                        ra.romList["unSrted"].append(r)
+        except ValueError as e:
+            print(e)
         
         if not ra.romList["unSrted"]:
             # If no files were gathered from the extraction path
@@ -93,10 +98,14 @@ class romArchive():
         # For each of the unsorted rom list
         for rom in ra.romList["unSrted"]:
             # If the file is a archive, and is not a bios
-            ra.m.wk(rom)
+            ra.m.wk(str(rom))
             # Initialize a new instance of a romFile object
             # Send name of rom, name of parent archive, where it was extracted to
-            romObj = romFile(name=rom, parent=ra.zipFPath, m=ra.m)
+            if not ra.skipExtract:
+                romName = rom
+            else:
+                romName = rom.name
+            romObj = romFile(name=romName, parent=ra.zipFPath, m=ra.m)
             # Scrape tags from the working rom
             # Collects the tags into the archive
             ra.collectTags(romObj.scrape())

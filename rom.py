@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 import re                       # Used to perform regex searches
 import sys                      # Used to exit the script
+import shutil
 from itertools import chain     # Used to combine dictionary values into a list
 from pathlib import Path
 
@@ -168,16 +169,19 @@ class romFile:
         return "UnKwn"
     
     ##### Move the rom to the sorted location
-    def move(rf, zipFile):
+    def move(rf, zipFile, sXtrct):
         rz = zipFile
         # Stores fully qualified path to file afer extraction
-        rf.path = rf.outLocation.joinpath(rf.name)
+        rf.path = rf.outLocation.joinpath(rf.name) 
         # Attempt to move the rom to the sorted location
         try:
-            rz.extract(rf.name, rf.outLocation)
+            if sXtrct:
+                shutil.move(rf.parent.joinpath(rf.name), rf.path)
+            else:
+                rz.extract(rf.name, rf.outLocation)
         # Error if unable to move
         except Exception as e:
-            rf.m.er("Unable to move", rf.name, "to sort location", rf.outLocation)
+            rf.m.er("Unable to move", rf.name, "to sort location", str(rf.outLocation))
             rf.m.ex("Error")
             sys.exit(1)
         else:

@@ -41,6 +41,7 @@
 
 import argparse                 # Used to parse arguments passed to the script at runtime
 import sys                      # Used to exit the script
+import shutil
 from pathlib import Path        # Used to perform os independent path manipulation
 from datetime import datetime   # Used to record the date and time script was run
 from zipfile import ZipFile
@@ -154,13 +155,35 @@ def threader(archive, msg):
                         break
 
                     try:
-                        rom.move(zf)
+                        rom.move(zf, False)
 
                     finally:
                         thr.extractQueue.task_done()
+    
+    class moveWorker():
+        def __init__(thr, setLoc, extractQueue):
+            thr.setLoc       = setLoc
+            thr.extractQueue = extractQueue
+        def run(thr):
+                while True:
+                    try:
+                        rom = thr.extractQueue.get_nowait()
+                    except Empty:
+                        break
+
+                    try:
+                        rom.move(thr.setLoc, True)
+
+                    finally:
+                        thr.extractQueue.task_done()
+
     futures = []            
-    workers = [ extractWorker(ra.zipFPath, extractQueue)
-               for _ in range(4) ]
+    if ra.skipExtract:
+        workers = [ moveWorker(ra.zipFPath, extractQueue)
+            for _ in range(4) ]
+    else:
+        workers = [ extractWorker(ra.zipFPath, extractQueue)
+                for _ in range(4) ]
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         futures = [
@@ -171,29 +194,6 @@ def threader(archive, msg):
         for future in futures:
             future.result()
 
-def createArchObj(tgtObj, archive, flags, m, now):
-    archObj = romArchive(
-        # Stores the target object for the archive
-        tgtObj,
-        # Stores the resolved path object for the archive
-        archive,
-        # Sets the user defined processed output destination
-        flags.outDest, 
-        # Sets the No-Intro release version information about the archive
-        flags.relVers,
-        # Sets the user defined home region for file sort
-        flags.homeRgn, 
-        # Sets the pretend flag; process extracted files only, skip move
-        flags.ptend,
-        # Skips the creation of the audit file
-        flags.noAudit,
-        # Messenger
-        m,
-        # Execeution time TODO: Break out auditfile to it's own thing
-        now.strftime("%m/%d/%Y %H:%M:%S")
-    )
-    return archObj
-
 
 # Defines the order subroutines are executed
 def mainRoutine():
@@ -202,33 +202,60 @@ def mainRoutine():
     flags = argParser()
     # Initialize the msg engine
     m = messenger(flags.debug, flags.verbose)
-    # Set the target(s) and returns absolute path(s) and then
-    # iterates through all archives that were passed to the script
     
-    ### TODO to match new chkTargets, save a set of romArchives that have been created and only create if not a duplicate
-    ###      if there is a duplicate archive, add it to the romlist instead, again checking for duplicates
-    ###      this will skip getting files twice when in skip extraction mode
+    # Creates archive objects
+    def createArchObj(tgtObj, archive, flags, m, now):
+        archObj = romArchive(
+            # Stores the target object for the archive
+            tgtObj,
+            # Stores the resolved path object for the archive
+            archive,
+            # Sets the user defined processed output destination
+            flags.outDest, 
+            # Sets the No-Intro release version information about the archive
+            flags.relVers,
+            # Sets the user defined home region for file sort
+            flags.homeRgn, 
+            # Sets the pretend flag; process extracted files only, skip move
+            flags.ptend,
+            # Skips the creation of the audit file
+            flags.noAudit, # TODO: Break out auditfile to its own thing
+            # Messenger
+            m,
+            # Execeution time
+            now.strftime("%m/%d/%Y %H:%M:%S")
+        )
+        return archObj
     
+    # Gather and validate targets
     try:
         targets = chkTargets(flags.targets, flags.sXtrct, m)
     except ValueError as e:
         print(e)
-    
+        
+    # iterates through all targets that were passed to the script
     for tgtObj in targets:
+        # Skip this target object if no archives were discovered
         if not tgtObj.hasArchives:
             continue
         
+        # If skip extraction is enabled for this target
         if tgtObj.skipExtraction:
-            m.st("Preparing target directory <", tgtObj.path, ">...")
+            m.st("Preparing target directory <", str(tgtObj.path), ">...")
+            # Create an archive objet for its parent directory
             archObj = createArchObj(tgtObj, tgtObj.path, flags, m, now)
-            archObj.romList["unSrted"] = tgtObj.archives
+            # Add the archives dicovered during target check to archive object
+            archObj.romList["unSrted"].extend(tgtObj.archives)
+            # Process the target, scraping and sorting the files and moving to output location
             archObj.process(threader)
         else:
+            # If skip extraction wasnt enabled
+            # Iterate through all the archives discovered in the set
             for archive in tgtObj.archives:
                 m.st("Preparing target archive <", archive.name, ">...")
-                # Initializes target archive object with user preferences
-                
+                # Creates an archive object for each of the discovered archives
                 archObj = createArchObj(tgtObj, archive, flags, m, now)
+                # Process the target, scraping and sorting the files and moving to output location
                 archObj.process(threader)
     
     # Exit the script after successful processing of all archives and files
